@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -36,8 +37,18 @@ var (
 )
 
 func init() {
+	var db int
+	dbStr := os.Getenv("REDIS_DB")
+	if dbStr == "" {
+		db = 11
+	} else {
+		db, _ = strconv.Atoi(dbStr)
+	}
+
 	rdb = redis.NewClient(&redis.Options{
-		Addr: os.Getenv("REDIS_ADDR"),
+		Addr:     os.Getenv("REDIS_ADDR"),
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       db,
 	})
 }
 
@@ -149,22 +160,22 @@ func rollOnce(ctx context.Context) int {
 }
 
 func doSomething(ctx context.Context, rdb *redis.Client) error {
-	if err := rdb.Set(ctx, "hello", "world", time.Minute).Err(); err != nil {
+	if err := rdb.Set(ctx, "go-demo:hello", "world", time.Minute).Err(); err != nil {
 		return err
 	}
-	if err := rdb.Set(ctx, "tag", "OTel", time.Minute).Err(); err != nil {
+	if err := rdb.Set(ctx, "go-demo:tag", "OTel", time.Minute).Err(); err != nil {
 		return err
 	}
 
-	val := rdb.Get(ctx, "tag").Val()
+	val := rdb.Get(ctx, "go-demo:tag").Val()
 	if val != "OTel" {
 		return errors.New("tag not found")
 	}
 
-	if err := rdb.Del(ctx, "name").Err(); err != nil {
+	if err := rdb.Del(ctx, "go-demo:name").Err(); err != nil {
 		return err
 	}
-	if err := rdb.Del(ctx, "tag").Err(); err != nil {
+	if err := rdb.Del(ctx, "go-demo:tag").Err(); err != nil {
 		return err
 	}
 	log.Println("access redis done!")
