@@ -52,14 +52,14 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 
-	// 设置 meter provider.
+	/*// 设置 meter provider.
 	meterProvider, err := newMeterProvider()
 	if err != nil {
 		handleErr(err)
 		return
 	}
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
-	otel.SetMeterProvider(meterProvider)
+	otel.SetMeterProvider(meterProvider)*/
 
 	return
 }
@@ -92,7 +92,7 @@ func newTraceProvider(ctx context.Context) (*trace.TracerProvider, error) {
 		),
 	)
 	if err != nil {
-		log.Printf("Could not set resources: ", err)
+		log.Printf("could not set resources:%v", err)
 	}
 
 	traceProvider := trace.NewTracerProvider(

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -91,6 +92,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(otelgin.Middleware(os.Getenv("OTEL_SERVICE_NAME")))
+	pprof.Register(r)
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(200, "Hello, World!")
