@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +11,8 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+
+	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
 )
 
 func handleErr(err error, message string) {
