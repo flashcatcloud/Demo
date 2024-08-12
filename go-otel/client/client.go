@@ -39,7 +39,7 @@ func main() {
 		latencyMs := float64(time.Since(startTime)) / 1e6
 
 		fmt.Printf("Latency: %.3fms\n", latencyMs)
-		time.Sleep(time.Duration(10) * time.Second)
+		time.Sleep(time.Duration(30) * time.Second)
 	}
 }
 
@@ -47,7 +47,7 @@ func makeRequest(ctx context.Context) {
 
 	demoServerAddr, ok := os.LookupEnv("DEMO_SERVER_ENDPOINT")
 	if !ok {
-		demoServerAddr = "http://localhost:8080/roll"
+		demoServerAddr = fmt.Sprintf("http://localhost:%s/roll", os.Getenv("GO_DEMO_SERVER_PORT"))
 	}
 
 	// Trace an HTTP client by wrapping the transport

@@ -11,6 +11,7 @@ RUN go env -w  GOPROXY=https://goproxy.cn,direct && \
     cp ./server/start.sh  /home/flashcat/server/start.sh && \
     cp ./client/start.sh  /home/flashcat/client/start.sh && \
     cp start.sh /home/flashcat/start.sh &&  \
+    chmod +x /home/flashcat/start.sh /home/flashcat/server/start.sh /home/flashcat/client/start.sh && \
     rm -rf /app
 
 CMD ["/home/flashcat/start.sh"]

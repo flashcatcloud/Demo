@@ -90,7 +90,7 @@ func main() {
 	r.GET("/roll", roll)
 
 	srv := http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%s", os.Getenv("GO_DEMO_SERVER_PORT")),
 		Handler: r,
 	}
 
