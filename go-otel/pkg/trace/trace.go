@@ -131,7 +131,11 @@ func newMeterProvider() (*metric.MeterProvider, error) {
 }
 
 func newLoggerProvider() (*log.LoggerProvider, error) {
-	logExporter, err := stdoutlog.New()
+	l, err := os.OpenFile("./server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
+	logExporter, err := stdoutlog.New(stdoutlog.WithWriter(l))
 	if err != nil {
 		return nil, err
 	}

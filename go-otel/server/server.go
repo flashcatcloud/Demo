@@ -183,7 +183,7 @@ func doSomething(ctx context.Context, rdb *redis.Client) error {
 	if err := rdb.Del(ctx, "go-demo:name").Err(); err != nil {
 		return err
 	}
-	logger.InfoContext(ctx, "go-demo:name deleted")
+	logger.With("hello", "flashcat").InfoContext(ctx, "go-demo:name deleted")
 	if err := rdb.Del(ctx, "go-demo:tag").Err(); err != nil {
 		return err
 	}
