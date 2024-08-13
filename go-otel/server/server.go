@@ -71,7 +71,7 @@ func recordMetrics() {
 
 func main() {
 	// 平滑处理 SIGINT (CTRL+C) .
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	recordMetrics()
@@ -109,27 +109,26 @@ func main() {
 	}
 
 	//启动HTTP服务器
+	srvErr := make(chan error, 1)
 	go func() {
-		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
-		}
+		srvErr <- srv.ListenAndServe()
 	}()
 
-	//等待一个INT或TERM信号
-	quit := make(chan os.Signal)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutdown Server ...")
-
-	//创建超时上下文，Shutdown可以让未处理的连接在这个时间内关闭
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	//停止HTTP服务器
-	if err = srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server Shutdown:", err)
+	// Wait for interruption.
+	select {
+	case err = <-srvErr:
+		// Error when starting HTTP server.
+		return
+	case <-ctx.Done():
+		// Wait for first CTRL+C.
+		// Stop receiving signal notifications as soon as possible.
+		stop()
 	}
 
+	// When Shutdown is called, ListenAndServe immediately returns ErrServerClosed.
+	if err = srv.Shutdown(context.Background()); err != nil {
+		log.Fatal("Server Shutdown:", err)
+	}
 	log.Println("Server exiting")
 }
 
