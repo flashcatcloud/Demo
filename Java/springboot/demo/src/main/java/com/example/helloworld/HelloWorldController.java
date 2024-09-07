@@ -5,21 +5,25 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.client.RestOperations;
+import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 public class HelloWorldController {
-//
-//    private final Tracer tracer;
-//
-//    public HelloWorldController(Tracer tracer) {
-//        this.tracer = tracer;
-//    }
+    // 创建 Logger 实例
+    private static final Logger logger = LoggerFactory.getLogger(HelloWorldController.class);
+
+
     OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
     Tracer tracer = openTelemetry.getTracer("demo-tracer");
 
+    @Autowired
+    private RestTemplate restTemplate;
 
     @GetMapping("/hello")
     public String hello() {
@@ -28,6 +32,7 @@ public class HelloWorldController {
         try (Scope scope = span.makeCurrent()) {
             // Perform the work inside the span's scope
             span.addEvent("This is in hello span");
+            logger.info("This is a log message with traceId");
             return echo("Hello World");
         } finally {
             // End the span when the work is done
@@ -40,24 +45,19 @@ public class HelloWorldController {
         Span span = tracer.spanBuilder("echoSpan").startSpan();
         try (Scope scope = span.makeCurrent()) {
             span.addEvent("This is in echo span");
-            return message;
+            // 调用另一个 API
+            String response = restTemplate.getForObject("http://127.0.0.1:8080/test", String.class);
+
+            // 返回结果
+            return "Hello, World! Response from /test: " + response;
         } finally {
             span.end();
         }
     }
 
-    @GetMapping("/ping")
+    @GetMapping("/test")
     public String ping() {
-        // Start a new span named "helloSpan"
-        Span span = tracer.spanBuilder("helloSpan").startSpan();
-        try (Scope scope = span.makeCurrent()) {
-            // Perform the work inside the span's scope
-            span.addEvent("This is in hello span");
-            return echo("Hello World");
-        } finally {
-            // End the span when the work is done
-            span.end();
-        }
+        return "Test";
     }
 }
 
