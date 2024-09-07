@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -33,8 +34,8 @@ var (
 		Help: "The total number of processed events",
 	})
 	tracer = otel.Tracer("roll")
-
-	rdb *redis.Client
+	logger = otelslog.NewLogger("go-demo-server")
+	rdb    *redis.Client
 )
 
 func init() {
@@ -70,7 +71,7 @@ func recordMetrics() {
 
 func main() {
 	// 平滑处理 SIGINT (CTRL+C) .
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	recordMetrics()
@@ -108,27 +109,26 @@ func main() {
 	}
 
 	//启动HTTP服务器
+	srvErr := make(chan error, 1)
 	go func() {
-		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
-		}
+		srvErr <- srv.ListenAndServe()
 	}()
 
-	//等待一个INT或TERM信号
-	quit := make(chan os.Signal)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutdown Server ...")
-
-	//创建超时上下文，Shutdown可以让未处理的连接在这个时间内关闭
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	//停止HTTP服务器
-	if err = srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server Shutdown:", err)
+	// Wait for interruption.
+	select {
+	case err = <-srvErr:
+		// Error when starting HTTP server.
+		return
+	case <-ctx.Done():
+		// Wait for first CTRL+C.
+		// Stop receiving signal notifications as soon as possible.
+		stop()
 	}
 
+	// When Shutdown is called, ListenAndServe immediately returns ErrServerClosed.
+	if err = srv.Shutdown(context.Background()); err != nil {
+		log.Fatal("Server Shutdown:", err)
+	}
 	log.Println("Server exiting")
 }
 
@@ -144,6 +144,7 @@ func roll(c *gin.Context) {
 	opsProcessed.Inc()
 	// 摇骰子次数的指标 +1
 	// rollCnt.Add(ctx, 1, metric.WithAttributes(rollValueAttr))
+	logger.InfoContext(ctx, fmt.Sprintf("roll number:%d", number))
 
 	c.JSON(http.StatusOK, gin.H{"msg": number})
 }
@@ -158,6 +159,8 @@ func rollOnce(ctx context.Context) int {
 		log.Printf("doSomething failed:%v\n!", err)
 	}
 
+	logger.InfoContext(ctx, fmt.Sprintf("rollOnce number:%d", number))
+
 	return number
 }
 
@@ -165,9 +168,11 @@ func doSomething(ctx context.Context, rdb *redis.Client) error {
 	if err := rdb.Set(ctx, "go-demo:hello", "world", time.Minute).Err(); err != nil {
 		return err
 	}
+	logger.InfoContext(ctx, "go-demo:hello set")
 	if err := rdb.Set(ctx, "go-demo:tag", "OTel", time.Minute).Err(); err != nil {
 		return err
 	}
+	logger.InfoContext(ctx, "go-demo:tag set")
 
 	val := rdb.Get(ctx, "go-demo:tag").Val()
 	if val != "OTel" {
@@ -177,9 +182,10 @@ func doSomething(ctx context.Context, rdb *redis.Client) error {
 	if err := rdb.Del(ctx, "go-demo:name").Err(); err != nil {
 		return err
 	}
+	logger.With("hello", "flashcat").InfoContext(ctx, "go-demo:name deleted")
 	if err := rdb.Del(ctx, "go-demo:tag").Err(); err != nil {
 		return err
 	}
-	log.Println("access redis done!")
+	logger.InfoContext(ctx, "tag deleted")
 	return nil
 }
