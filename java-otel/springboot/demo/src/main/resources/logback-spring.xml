@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg [traceId=%X{trace_id}]%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 定义文件输出 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/Users/gene/Downloads/logs/spring-boot-log.json</file> <!-- 日志文件路径 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/Users/gene/Downloads/logs/spring-boot-log-%d{yyyy-MM-dd}.json</fileNamePattern>
+            <maxHistory>30</maxHistory> <!-- 保留30天的日志文件 -->
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder" >
+            <!-- 自定义字段名称配置 -->
+            <!-- 在 JSON 中包含 TraceID -->
+            <customFields>{"app_name": "demo-app"}</customFields>
+            <mdcKeyFieldNameMap>
+                <entry key="trace_id" value="traceId"/>
+                <entry key="span_id" value="spanId"/>
+            </mdcKeyFieldNameMap>
+        </encoder>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="console" />
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>

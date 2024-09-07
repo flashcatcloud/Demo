@@ -1,0 +1,11 @@
+2024-08-18 18:26:30 - Starting HelloworldApplication using Java 22.0.1 with PID 13482 (/Users/gene/dev/github.com/flashcatcloud/Demo/Java/springboot/demo/target/classes started by gene in /Users/gene/dev/github.com/flashcatcloud/Demo/Java/springboot/demo)
+2024-08-18 18:26:30 - No active profile set, falling back to 1 default profile: "default"
+2024-08-18 18:26:30 - Tomcat initialized with port 8080 (http)
+2024-08-18 18:26:30 - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-18 18:26:30 - Starting service [Tomcat]
+2024-08-18 18:26:30 - Starting Servlet engine: [Apache Tomcat/10.1.24]
+2024-08-18 18:26:30 - Initializing Spring embedded WebApplicationContext
+2024-08-18 18:26:30 - Root WebApplicationContext: initialization completed in 634 ms
+2024-08-18 18:26:30 - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-18 18:26:31 - Tomcat started on port 8080 (http) with context path '/'
+2024-08-18 18:26:31 - Started HelloworldApplication in 1.238 seconds (process running for 1.665)
