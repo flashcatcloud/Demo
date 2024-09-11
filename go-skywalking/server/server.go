@@ -134,7 +134,7 @@ func main() {
 	select {
 	case err = <-srvErr:
 		// Error when starting HTTP server.
-		return
+		panic(err)
 	case <-ctx.Done():
 		// Wait for first CTRL+C.
 		// Stop receiving signal notifications as soon as possible.

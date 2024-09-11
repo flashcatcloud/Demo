@@ -2,8 +2,8 @@ FROM flashcat.tencentcloudcr.com/flashcat/golang:1.22.6
 WORKDIR /app/
 COPY . /app
 RUN go env -w  GOPROXY=https://goproxy.cn,direct && \
-    go build -o /app/bin/server server/server.go && \
-    go build -o /app/bin/client client/client.go && \
+    go build -toolexec="/app/apache-skywalking-go-0.5.0-bin/bin/skywalking-go-agent-0.5.0-linux-amd64" -o /app/bin/server server/server.go && \
+    go build -toolexec="/app/apache-skywalking-go-0.5.0-bin/bin/skywalking-go-agent-0.5.0-linux-amd64" -o /app/bin/client client/client.go && \
     mkdir /home/flashcat/server && \
     mkdir /home/flashcat/client && \
     cp /app/bin/server  /home/flashcat/server && \

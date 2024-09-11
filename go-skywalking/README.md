@@ -15,14 +15,14 @@
 按实际情况替换下面命令中的环境变量和镜像名.
 ```shell
 
-docker run -d --name go-skywalking-demo --net=host \ 
+docker run -d --name go-skywalking-demo --net=host \
 -e GO_DEMO_SERVER_PORT=9191 \
 -e SW_AGENT_REPORTER_GRPC_BACKEND_SERVICE=localhost:11800 \
 -e SW_AGENT_LOG_TRACING_KEY=SW_CTX \
 -e SW_AGENT_LOG_TRACING_ENABLE=true \
--e SW_LOG_TYPE=auto \ 
+-e SW_LOG_TYPE=auto \
 -e REDIS_ADDR=10.201.0.210:6379 \
--e REDIS_PASSWORD=beaeb4c73 \ 
-flashcat.tencentcloudcr.com/flashcat/go-skywalking:v0.0.1
+-e REDIS_PASSWORD=beaeb4c73 \
+flashcat.tencentcloudcr.com/flashcat/go-skywalking:v0.0.0
 
 ```
