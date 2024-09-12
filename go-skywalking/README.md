@@ -1,17 +1,27 @@
-### 代码说明
-这个项目中有一个服务器，一个客户端。
-服务器有个`/roll`接口，会去简单操作一下redis, redis默认db是`11`.
+### 0x00 代码说明
+完整部署该demo需要部署三个组件：
+- skywalking后端
+- nginx
+- demo自身
 
-客户端每隔30s会去访问服务端的`/roll`接口.
+1. demo程序里有一个`server`，一个`client`, `client`访问`server`经过`nginx`;
 
-### 编译
+2. 服务器有个`/roll`接口，会去简单操作一下redis, redis默认db是`11`;
+
+3. 客户端每隔30s会去访问服务端的`/roll`接口.
+
+所以流程图如下所示:
+
+`client -> nginx -> server -> redis` 
+
+### 0x01 编译
 编译包括代码二进制编译和镜像生成，过程都写在了`Dockerfile`中,简单执行`docker build`即可完成所有流程:
 
 在 `build(172.26.88.122)`那台机器上, 将代码pull下来，cd到go-skywalking目录，执行`build --no-cache  -t flashcat.tencentcloudcr.com/flashcat/go-skywalking:$version .`
 
 然后推送到仓库。
 
-### 运行
+### 0x02 运行
 按实际情况替换下面命令中的环境变量和镜像名.
 
 #### 1. 运行skywalking(ui and webserver)
@@ -42,7 +52,7 @@ flashcat.tencentcloudcr.com/flashcat/nginx-skywalking:v0.0.1
 
 > note: `flashcat.tencentcloudcr.com/flashcat/nginx-skywalking:$version` 基于`./nginx/Dockerfile`构建而来.
 
-#### 运行demo程序
+#### 3. 运行demo程序
 ```shell
 
 docker run -d --name go-skywalking-demo --net=host \
@@ -59,7 +69,7 @@ flashcat.tencentcloudcr.com/flashcat/go-skywalking:v0.0.1
 
 ```
 
-### 日志采集
+### 0x03 日志采集
 在flashcat `数据接入->数据采集`下，新建采集，`组件`留空，`插件类型`手动填写`logs-agent`,内容为`./log-scrape/logs.toml`
 
 修改对应的`kafka`地址和`[logs.items]`下的`source`字段
