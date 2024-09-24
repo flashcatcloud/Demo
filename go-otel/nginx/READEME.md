@@ -1,0 +1,1 @@
+-  reference: [nginx增加trace](https://alidocs.dingtalk.com/i/nodes/R1zknDm0WRK2XmzmTNBmDAmbVBQEx5rG?cid=11121368%3A280141594&utm_source=im&utm_scene=team_space&iframeQuery=utm_medium%3Dportal_space_create%26utm_source%3Dportal&utm_medium=im_card&corpId=ding92175f16745f2ae24ac5d6980864d335)

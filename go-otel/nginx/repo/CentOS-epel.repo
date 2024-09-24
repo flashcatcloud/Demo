@@ -1,0 +1,7 @@
+[epel]
+name=Extra Packages for Enterprise Linux 8 - $basearch
+baseurl=http://mirrors.cloud.aliyuncs.com/epel/8/Everything/$basearch
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8
