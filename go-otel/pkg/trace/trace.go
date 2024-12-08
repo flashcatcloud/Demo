@@ -43,6 +43,8 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	}
 
 	// 设置传播器
+	// 目的是为了trace可以跨进程传递
+	// see https://opentelemetry.io/zh/docs/languages/go/instrumentation/#propagators-and-context
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
@@ -54,15 +56,6 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
-
-	/*// 设置 meter provider.
-	meterProvider, err := newMeterProvider()
-	if err != nil {
-		handleErr(err)
-		return
-	}
-	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
-	otel.SetMeterProvider(meterProvider)*/
 
 	// Set up logger provider.
 	loggerProvider, err := newLoggerProvider()

@@ -1,0 +1,37 @@
+version: '3.8'
+services:
+  oap:
+    image: flashcat.tencentcloudcr.com/flashcat/skywalking-oap-server:10.0.1
+    container_name: skywalking-oap
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "/skywalking/bin/swctl ch"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    environment:
+      SW_STORAGE: elasticsearch
+      SW_STORAGE_ES_CLUSTER_NODES: 10.201.0.210:9200 # 替换
+      SW_ES_USER: elastic # 替换
+      SW_ES_PASSWORD: MhxzKhl@FC # 替换
+      SW_HEALTH_CHECKER: default
+      SW_TELEMETRY: prometheus
+      JAVA_OPTS: "-Xms2048m -Xmx2048m"
+    ports:
+      - 11800:11800
+      - 12800:12800
+  ui:
+    image: flashcat.tencentcloudcr.com/flashcat/skywalking-ui:10.0.1
+    container_name: skywalking-ui
+    depends_on:
+      - oap
+    restart: always
+    environment:
+      SW_OAP_ADDRESS: http://10.201.0.210:12800 # 替换
+    ports:
+      - 9090:8080
+
+volumes:
+  data:
+    driver: local
