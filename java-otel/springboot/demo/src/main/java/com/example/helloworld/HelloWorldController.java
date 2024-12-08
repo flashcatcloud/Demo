@@ -18,7 +18,6 @@ public class HelloWorldController {
     // 创建 Logger 实例
     private static final Logger logger = LoggerFactory.getLogger(HelloWorldController.class);
 
-
     OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
     Tracer tracer = openTelemetry.getTracer("demo-tracer");
 

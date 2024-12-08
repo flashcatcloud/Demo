@@ -12,9 +12,9 @@
 
     <!-- 定义文件输出 -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/opt/logs/spring-boot-log.json</file> <!-- 日志文件路径 -->
+        <file>/opt/java-demo/logs/spring-boot-log.json</file> <!-- 日志文件路径 -->
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/opt/logs/spring-boot-log-%d{yyyy-MM-dd}.json</fileNamePattern>
+            <fileNamePattern>/opt/java-demo/logs/spring-boot-log-%d{yyyy-MM-dd}.json</fileNamePattern>
             <maxHistory>30</maxHistory> <!-- 保留30天的日志文件 -->
         </rollingPolicy>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder" >
