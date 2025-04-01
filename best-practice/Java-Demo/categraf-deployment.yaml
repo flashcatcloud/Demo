@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: categraf-deployment
+  namespace: flashcat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: categraf
+  template:
+    metadata:
+      labels:
+        app: categraf
+    spec:
+      hostNetwork: true
+      serviceAccountName: categraf
+      containers:
+      - name: categraf
+        image: hub.witd.in/flashcatcloud/categraf_ent:v0.3.143
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/categraf/conf/config.toml
+          subPath: config.toml
+        - name: cluster-scrape-volume
+          mountPath: /opt/categraf/cluster-scrape.yaml
+          subPath: cluster-scrape.yaml
+      volumes:
+      - name: config-volume
+        configMap:
+          name: categraf-config
+          items:
+          - key: config.toml
+            path: config.toml
+      - name: cluster-scrape-volume
+        configMap:
+          name: cluster-scrape-config
+          items:
+          - key: cluster-scrape.yaml
+            path: cluster-scrape.yaml
