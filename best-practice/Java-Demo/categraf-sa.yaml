@@ -1,0 +1,52 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: categraf
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/stats
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - extensions
+      - networking.k8s.io
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: categraf
+  namespace: flashcat
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: categraf
+  namespace: flashcat
+  annotations:
+    kubernetes.io/service-account.name: "categraf"
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: categraf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: categraf
+subjects:
+- kind: ServiceAccount
+  name: categraf
+  namespace: flashcat

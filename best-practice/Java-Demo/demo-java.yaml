@@ -45,4 +45,3 @@ spec:
     targetPort: 9080
     name: jmx
   type: ClusterIP
-
