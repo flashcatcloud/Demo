@@ -1,0 +1,147 @@
+---
+kind: ConfigMap
+metadata:
+  name: categraf-config
+apiVersion: v1
+data:
+  config.toml: |
+    [global]
+    # whether print configs
+    print_configs = false
+    hostname = ""
+    
+    # will not add label(agent_hostname) if true
+    omit_hostname = false
+    
+    # global collect interval, unit: second
+    interval = 15
+    
+    # input provider settings; optional: local / http
+    providers = ["local","http","rmq"]
+    
+    # Setting http.ignore_global_labels = true if disabled report custom labels
+    [global.labels]
+    # region = "shanghai"
+    # env = "localhost"
+    
+    [global.n9e_server]
+    # 将127.0.0.1:17000 替换为n9e的实际地址
+    address="http://10.201.0.207:19000"
+    # pingmesh探测端口
+    pingmesh=[]
+
+    ## Use TLS but skip chain & host verification
+    # insecure_skip_verify = true
+    # Basic auth username
+    basic_auth_user = ""
+    # Basic auth password
+    basic_auth_pass = ""
+
+    [log]
+    # file_name is the file to write logs to
+    file_name = "stdout"
+    
+    # options below will not be work when file_name is stdout or stderr
+    # max_size is the maximum size in megabytes of the log file before it gets rotated. It defaults to 100 megabytes.
+    max_size = 100
+    # max_age is the maximum number of days to retain old log files based on the timestamp encoded in their filename.  
+    max_age = 1
+    # max_backups is the maximum number of old log files to retain.  
+    max_backups = 1
+    # local_time determines if the time used for formatting the timestamps in backup files is the computer's local time.  
+    local_time = true
+    # Compress determines if the rotated log files should be compressed using gzip. 
+    compress = false
+    
+    [writer_opt]
+    batch = 1000
+    chan_size = 1000000
+    
+    [http]
+    enable = false
+    address = ":9100"
+    print_access = false
+    run_mode = "release"
+    ignore_hostname = false
+    ignore_global_labels = false
+    
+    [ibex]
+    enable = false
+    ## ibex flush interval
+    interval = "1000ms"
+    ## n9e ibex server rpc address
+    servers = ["127.0.0.1:20090"]
+    ## temp script dir
+    meta_dir = "./meta"
+
+  logs.toml: |
+    [logs]
+    ## key 占位符
+    api_key = "ef4ahfbwzwwtlwfpbertgq1i6mq0ab1q"
+    ## 是否开启日志采集
+    enable = true
+    ## 接受日志的server地址，修改成自己真实kafka地址
+    send_to = "10.201.0.207:9092,10.201.0.211:9092,10.201.0.210:9092"
+    ## 发送日志的协议 http/tcp
+    send_type = "kafka"
+    # 日志对应的全局topic
+    topic = "kubernetes_app_log"
+    ## 是否压缩发送
+    use_compress = false
+    # gzip压缩级别,0 表示不压缩， 1-9 表示压缩级别
+    compression_level=0
+
+    #kafka支持的压缩 none gzip snappy lz4 zstd
+    compression_codec="none"
+    ## use ssl or not
+    send_with_tls = false
+    ##
+    batch_wait = 5
+    ## 日志offset信息保存目录
+    run_path = "/opt/categraf/run"
+    ## 最多同时采集多少个日志文件
+    open_files_limit = 100
+    ## 定期扫描目录下是否有新增日志
+    scan_period = 10
+    ## udp 读buffer的大小
+    frame_size = 9000
+    ## channal size, default 100 
+
+    ## 读取日志缓冲区，行数
+    chan_size = 10000
+    ## 有多少线程处理日志
+    pipeline=10
+    ## configuration for kafka
+    ## 指定kafka版本
+    kafka_version="3.3.2"
+    # 默认0 表示按照读取顺序串行写入kafka,如果对日志顺序有要求,保持默认配置
+    batch_max_concurrence = 100
+    # 发送缓冲区的大小(行数)，如果设置比chan_size小，会自动设置为跟chan_size相同
+    batch_max_size=10000
+    # 每次最大发送的内容上限 默认1000000 Byte (与batch_max_size先到者触发发送)
+    batch_max_content_size=900000 
+    # client timeout in seconds
+    producer_timeout= 10
+
+    # 是否开启sasl模式
+    sasl_enable = false
+    sasl_user = "admin"
+    sasl_password = "admin"
+    # PLAIN 
+    sasl_mechanism= "PLAIN"
+    # v1
+    sasl_version=1
+    # set true
+    sasl_handshake = true
+    # optional
+    # sasl_auth_identity=""
+
+    ##
+    #ent-v0.3.50以上版本新增,是否开启pod日志采集
+    enable_collect_container=true
+    #是否采集所有pod的stdout stderr
+    collect_container_all = true
+    # 日志格式 dockerd/containerd/podman
+    container_logs_parser="containerd"
+    container_include=["name:.*"]
+    #container_exclude=[]
