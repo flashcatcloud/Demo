@@ -1,0 +1,103 @@
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations: {}
+  labels:
+    app: n9e
+    component: categraf
+    release: nightingale
+  name: nightingale-categraf
+spec:
+  selector:
+    matchLabels:
+      app: n9e
+      component: categraf
+      release: nightingale
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: n9e
+        component: categraf
+        release: nightingale
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      containers:
+      - env:
+        - name: TZ
+          value: Asia/Shanghai
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        - name: HOSTIP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: KUBERNETES_KUBELET_HOST
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: HOST_PROC
+          value: /hostfs/proc
+        - name: HOST_SYS
+          value: /hostfs/sys
+        - name: HOST_MOUNT_PREFIX
+          value: /hostfs
+        image: hub.witd.in/flashcatcloud/categraf_ent:v0.4.13-pre
+        imagePullPolicy: IfNotPresent
+        name: categraf
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/categraf/conf/config.toml
+          name: categraf-config
+          subPath: config.toml
+        - mountPath: /etc/categraf/conf/logs.toml
+          name: categraf-config
+          subPath: logs.toml
+        - mountPath: /var/run/utmp
+          name: hostroutmp
+          readOnly: true
+        - mountPath: /hostfs
+          name: hostrofs
+          readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: categraf
+      hostNetwork: true
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      volumes:
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: config.toml
+            path: config.toml
+          - key: logs.toml
+            path: logs.toml
+          name: categraf-config
+        name: categraf-config
+      - hostPath:
+          path: /
+          type: ""
+        name: hostrofs
+      - hostPath:
+          path: /var/run/utmp
+          type: ""
+        name: hostroutmp
