@@ -29,5 +29,5 @@ data:
             regex : "(.*)-[a-zA-Z0-9]{5,10}-[a-zA-Z0-9]{5}"
             target_label : "deployment"
             replacement : "${1}"          
-        remote_write:
+    remote_write:
       - url: 'http://10.201.0.207:19000/prometheus/v1/write'
