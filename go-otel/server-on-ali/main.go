@@ -2,23 +2,25 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"log"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	_ "github.com/go-sql-driver/mysql"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 
-	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
 	"github.com/flashcatcloud/Demo/go-otel/pkg/model"
 	"github.com/flashcatcloud/Demo/go-otel/pkg/redis"
+	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
 )
 
 func init() {
@@ -31,17 +33,10 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	model.RecordMetrics()
+	shutdown := trace.InitOpenTelemetry()
+	defer shutdown()
 
-	// 设置 OpenTelemetry.
-	otelShutdown, err := trace.SetupOTelSDK(ctx)
-	if err != nil {
-		panic(err)
-	}
-	// 妥善处理停机，确保无泄漏
-	defer func() {
-		err = errors.Join(err, otelShutdown(ctx))
-	}()
+	model.RecordMetrics()
 
 	r := gin.Default()
 	r.Use(otelgin.Middleware(os.Getenv("OTEL_SERVICE_NAME")))
@@ -71,6 +66,7 @@ func main() {
 		srvErr <- srv.ListenAndServe()
 	}()
 
+	var err error
 	// Wait for interruption.
 	select {
 	case err = <-srvErr:
@@ -87,4 +83,32 @@ func main() {
 		log.Fatal("Server Shutdown:", err)
 	}
 	log.Println("Server exiting")
+}
+
+func parentMethod(ctx context.Context) {
+	tracer := otel.Tracer("otel-go-tracer")
+	ctx, span := tracer.Start(ctx, "parent span")
+	fmt.Println(span.SpanContext().TraceID()) // 打印 TraceId
+	span.SetAttributes(attribute.String("key", "value"))
+	span.SetStatus(codes.Ok, "Success")
+	childMethod(ctx)
+	span.End()
+}
+
+func childMethod(ctx context.Context) {
+	tracer := otel.Tracer("otel-go-tracer")
+	ctx, span := tracer.Start(ctx, "child span")
+	span.SetStatus(codes.Ok, "Success")
+	grandChildMethod(ctx)
+	span.End()
+}
+
+func grandChildMethod(ctx context.Context) {
+	tracer := otel.Tracer("otel-go-tracer")
+	ctx, span := tracer.Start(ctx, "grandchild span")
+	span.SetStatus(codes.Error, "error")
+
+	// 业务代码...
+
+	span.End()
 }
