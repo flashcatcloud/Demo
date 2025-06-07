@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define server URL
-SERVER_URL="http://localhost:${GO_DEMO_SERVER_PORT:-8080}"
+SERVER_URL="http://localhost:${GO_DEMO_SERVER_PORT:-8081}"
 
 # 预定义一些常见英文名字
 NAMES=(

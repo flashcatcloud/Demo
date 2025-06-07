@@ -7,64 +7,78 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	gotrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
 )
 
-func handleErr(err error, message string) {
-	if err != nil {
-		log.Fatalf("%s: %v", message, err)
+// Client 客户端结构体
+type Client struct {
+	httpClient   *http.Client
+	serverURL    string
+	tracer       gotrace.Tracer
+	createdUsers []User // 跟踪创建的用户
+	names        []string
+}
+
+func NewClient() *Client {
+	// 获取服务器地址
+	serverURL := os.Getenv("DEMO_SERVER_ENDPOINT")
+	if serverURL == "" {
+		port := os.Getenv("GO_DEMO_SERVER_PORT")
+		if port == "" {
+			port = "8080"
+		}
+		serverURL = fmt.Sprintf("http://localhost:%s", port)
+	}
+
+	// 移除末尾的路径，保留基础URL
+	if strings.HasSuffix(serverURL, "/roll") {
+		serverURL = strings.TrimSuffix(serverURL, "/roll")
+	}
+
+	return &Client{
+		httpClient: &http.Client{
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+			Timeout:   30 * time.Second,
+		},
+		serverURL:    serverURL,
+		tracer:       otel.Tracer("demo-client"),
+		createdUsers: make([]User, 0),
+		names:        commonNames,
 	}
 }
 
 func main() {
 	ctx := context.Background()
+
+	// 设置OpenTelemetry
 	shutdown, err := trace.SetupOTelSDK(ctx)
-	handleErr(err, "failed to setup OTelSDK")
+	handleErr(err, "设置OpenTelemetry失败")
 	defer func() {
 		err = errors.Join(err, shutdown(ctx))
 	}()
 
-	tracer := otel.Tracer("demo-client-tracer")
+	// 创建客户端
+	client := NewClient()
 
-	for {
-		startTime := time.Now()
-		ctx, span := tracer.Start(ctx, "ExecuteRequest")
-		makeRequest(ctx)
-		span.End()
-		latencyMs := float64(time.Since(startTime)) / 1e6
+	log.Printf("客户端启动，服务器地址: %s", client.serverURL)
 
-		fmt.Printf("Latency: %.3fms\n", latencyMs)
-		time.Sleep(time.Duration(30) * time.Second)
-	}
-}
+	// 创建可取消的context
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-func makeRequest(ctx context.Context) {
+	// 启动Roll请求协程
+	go client.runRollRequests(ctx)
 
-	demoServerAddr, ok := os.LookupEnv("DEMO_SERVER_ENDPOINT")
-	if !ok {
-		demoServerAddr = fmt.Sprintf("http://localhost:%s/roll", os.Getenv("GO_DEMO_SERVER_PORT"))
-	}
+	// 启动用户请求协程
+	go client.runUserRequests(ctx)
 
-	// Trace an HTTP client by wrapping the transport
-	client := http.Client{
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	// Make sure we pass the context to the request to avoid broken traces.
-	req, err := http.NewRequestWithContext(ctx, "GET", demoServerAddr, nil)
-	if err != nil {
-		handleErr(err, "failed to http request")
-	}
-
-	// All requests made with this client will create spans.
-	res, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	res.Body.Close()
+	// 主线程保持运行
+	select {}
 }

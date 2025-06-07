@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"github.com/google/uuid"
 )
 
 // SetupOTelSDK 引导 OpenTelemetry pipeline。
@@ -93,6 +94,7 @@ func newTraceProvider(ctx context.Context) (*trace.TracerProvider, error) {
 		resource.WithHost(),
 		resource.WithAttributes(
 			attribute.String("service.name", os.Getenv("OTEL_SERVICE_NAME")),
+			attribute.String("service.instance.id", uuid.NewString()),
 			attribute.String("library.language", "go"),
 		),
 	)

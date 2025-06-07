@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.15.0"
+	"github.com/google/uuid"
 )
 
 const (
@@ -38,6 +39,7 @@ func newResource(ctx context.Context) *resource.Resource {
 			semconv.ServiceVersionKey.String(SERVICE_VERSION),           // 应用版本
 			semconv.DeploymentEnvironmentKey.String(DEPLOY_ENVIRONMENT), // 部署环境
 			semconv.HostNameKey.String(hostName),                        // 主机名
+			semconv.ServiceInstanceIDKey.String(uuid.NewString()),       // instance.id
 		),
 	)
 

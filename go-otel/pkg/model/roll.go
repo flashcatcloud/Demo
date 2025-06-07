@@ -1,12 +1,12 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"context"
+	"math/rand"
 	"net/http"
 	"time"
-	"math/rand"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
@@ -14,8 +14,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	gotrace "go.opentelemetry.io/otel/trace"
 
-	"github.com/flashcatcloud/Demo/go-otel/pkg/redis"
 	logx "github.com/flashcatcloud/Demo/go-otel/pkg/log"
+	"github.com/flashcatcloud/Demo/go-otel/pkg/mcp"
+	"github.com/flashcatcloud/Demo/go-otel/pkg/redis"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -66,7 +67,32 @@ func rollOnce(ctx context.Context) (int, error) {
 		err    error
 		number int
 	)
-	number = 1 + rand.Intn(6)
+
+	// 生成两个随机数（1-6范围，模拟骰子）
+	dice1 := 1 + rand.Intn(6)
+	dice2 := 1 + rand.Intn(6)
+
+	span.SetAttributes(
+		attribute.Int("dice1", dice1),
+		attribute.Int("dice2", dice2),
+	)
+
+	log.Printf("生成随机数: dice1=%d, dice2=%d", dice1, dice2)
+
+	// 调用MCP服务器进行计算
+	result, err := mcp.CallCalculatorTool(ctx, "add", float64(dice1), float64(dice2))
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "MCP计算失败")
+		log.Printf("MCP计算失败，使用本地计算: %v", err)
+		// 如果MCP调用失败，使用本地计算作为回退
+		number = dice1 + dice2
+	} else {
+		number = int(result)
+	}
+
+	span.SetAttributes(attribute.Int("final_number", number))
+
 	if err = redis.DoSomething(ctx, redis.Rdb); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		// 记录错误详情
@@ -75,7 +101,7 @@ func rollOnce(ctx context.Context) (int, error) {
 		return number, err
 	}
 
-	logx.Logger.InfoContext(ctx, fmt.Sprintf("rollOnce number:%d", number))
+	logx.Logger.InfoContext(ctx, fmt.Sprintf("rollOnce number:%d (通过MCP计算: %d + %d)", number, dice1, dice2))
 
-	return number, err
+	return number, nil
 }

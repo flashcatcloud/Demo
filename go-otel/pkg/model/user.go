@@ -20,6 +20,7 @@ func initMysql() {
 	dsn := "root:1234@tcp(127.0.0.1:3306)/testdb?parseTime=true"
 	db, err = otelsql.Open("mysql", dsn, otelsql.WithAttributes(
 		semconv.DBSystemMySQL,
+		semconv.DBNamespace("127.0.0.1:3306)"),
 	))
 	if err != nil {
 		panic(err)
@@ -60,7 +61,7 @@ func CreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "name and phone required"})
 		return
 	}
-	res, err := db.Exec("INSERT INTO users (name, gender, phone, email, age) VALUES (?, ?, ?, ?, ?)",
+	res, err := db.ExecContext(c.Request.Context(), "INSERT INTO users (name, gender, phone, email, age) VALUES (?, ?, ?, ?, ?)",
 		user.Name, user.Gender, user.Phone, user.Email, user.Age)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "db error"})
@@ -80,11 +81,11 @@ func GetUser(c *gin.Context) {
 	var user User
 	var row *sql.Row
 	if name != "" && phone != "" {
-		row = db.QueryRow("SELECT id, name, gender, phone, email, age, created_at FROM users WHERE name=? AND phone=? LIMIT 1", name, phone)
+		row = db.QueryRowContext(c.Request.Context(), "SELECT id, name, gender, phone, email, age, created_at FROM users WHERE name=? AND phone=? LIMIT 1", name, phone)
 	} else if name != "" {
-		row = db.QueryRow("SELECT id, name, gender, phone, email, age, created_at FROM users WHERE name=? LIMIT 1", name)
+		row = db.QueryRowContext(c.Request.Context(), "SELECT id, name, gender, phone, email, age, created_at FROM users WHERE name=? LIMIT 1", name)
 	} else {
-		row = db.QueryRow("SELECT id, name, gender, phone, email, age, created_at FROM users WHERE phone=? LIMIT 1", phone)
+		row = db.QueryRowContext(c.Request.Context(), "SELECT id, name, gender, phone, email, age, created_at FROM users WHERE phone=? LIMIT 1", phone)
 	}
 	err := row.Scan(&user.Id, &user.Name, &user.Gender, &user.Phone, &user.Email, &user.Age, &user.CreatedAt)
 	if err != nil {
@@ -95,7 +96,7 @@ func GetUser(c *gin.Context) {
 }
 
 func ListUsers(c *gin.Context) {
-	rows, err := db.Query("SELECT id, name, gender, phone, email, age, created_at FROM users ORDER BY created_at DESC LIMIT 100")
+	rows, err := db.QueryContext(c.Request.Context(), "SELECT id, name, gender, phone, email, age, created_at FROM users ORDER BY created_at DESC LIMIT 100")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "db error"})
 		return
