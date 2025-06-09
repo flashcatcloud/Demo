@@ -34,27 +34,24 @@ func getMCPServerURL() string {
 func getSharedMCPClient() (*client.Client, error) {
 	var err error
 	mcpInitOnce.Do(func() {
-		sharedMCPClient, err = client.NewSSEMCPClient(getMCPServerURL())
+		sharedMCPClient, err = client.NewSSEMCPClient(getMCPServerURL() + "/sse")
 		if err != nil {
 			return
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err = sharedMCPClient.Start(ctx); err != nil {
 			sharedMCPClient = nil
 			return
 		}
-		initReq := mcp.InitializeRequest{
-			Params: mcp.InitializeParams{
-				ProtocolVersion: "2024-11-05",
-				Capabilities:    mcp.ClientCapabilities{},
-				ClientInfo: mcp.Implementation{
-					Name:    "go-otel-client",
-					Version: "1.0.0",
-				},
-			},
+		// Initialize
+		initRequest := mcp.InitializeRequest{}
+		initRequest.Params.ProtocolVersion = mcp.LATEST_PROTOCOL_VERSION
+		initRequest.Params.ClientInfo = mcp.Implementation{
+			Name:    "go-otel-demo-server",
+			Version: "1.0.0",
 		}
-		_, err = sharedMCPClient.Initialize(ctx, initReq)
+		_, err = sharedMCPClient.Initialize(ctx, initRequest)
 		if err != nil {
 			sharedMCPClient = nil
 		}
@@ -77,7 +74,7 @@ func CallCalculatorTool(ctx context.Context, operation string, x, y float64) (fl
 	)
 
 	cli, err := getSharedMCPClient()
-	if err != nil {
+	if err != nil || cli == nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to initialize MCP cli")
 		return 0, fmt.Errorf("MCP 客户端初始化失败: %w", err)

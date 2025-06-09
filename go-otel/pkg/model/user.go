@@ -2,6 +2,8 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/XSAM/otelsql"
@@ -17,10 +19,14 @@ func Init() {
 func initMysql() {
 	var err error
 	// 你可以用环境变量配置这些参数
-	dsn := "root:1234@tcp(127.0.0.1:3306)/testdb?parseTime=true"
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_ADDRESS"),
+		os.Getenv("DB_NAME"))
 	db, err = otelsql.Open("mysql", dsn, otelsql.WithAttributes(
 		semconv.DBSystemMySQL,
-		semconv.DBNamespace("127.0.0.1:3306)"),
+		semconv.DBNamespace(os.Getenv("DB_ADDRESS")),
 	))
 	if err != nil {
 		panic(err)

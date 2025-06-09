@@ -119,8 +119,6 @@ func main() {
 				attribute.String("transport", "sse"),
 				attribute.String("endpoint", "/sse"),
 			)
-
-			log.Println("New SSE client connected")
 			return ctx
 		}),
 	)
