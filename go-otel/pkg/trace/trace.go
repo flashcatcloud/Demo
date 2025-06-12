@@ -9,7 +9,6 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/log/global"
@@ -19,6 +18,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 )
 
 // SetupOTelSDK 引导 OpenTelemetry pipeline。
@@ -82,8 +83,16 @@ func newTraceProvider(ctx context.Context) (*trace.TracerProvider, error) {
 		otlptracehttp.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
 		otlptracehttp.WithInsecure(),
 	)
+
 	if err != nil {
 		return nil, err
+	}
+	if os.Getenv("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL") == "grpc" {
+		if traceExporter, err = otlptracegrpc.New(ctx,
+			otlptracegrpc.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+			otlptracegrpc.WithInsecure()); err != nil {
+			return nil, err
+		}
 	}
 
 	resources, err := resource.New(
