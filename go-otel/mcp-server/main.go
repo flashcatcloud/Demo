@@ -23,7 +23,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 
-	"github.com/flashcatcloud/Demo/go-otel/pkg/otel"
+	pkgotel "github.com/flashcatcloud/Demo/go-otel/pkg/otel"
 )
 
 const (
@@ -83,7 +83,7 @@ func main() {
 	defer stop()
 
 	// 设置 OpenTelemetry
-	otelShutdown, err := otel.SetupOTelSDK(ctx)
+	otelShutdown, err := pkgotel.SetupOTelSDK(ctx)
 	if err != nil {
 		log.Fatalf("Failed to setup OpenTelemetry: %v", err)
 	}
