@@ -20,6 +20,10 @@ done
 
 # 脚本结束
 
+# mcp-server
+sh /home/flashcat/mcp-server/start.sh
+
+# client
 sh /home/flashcat/client/start.sh
 
 
