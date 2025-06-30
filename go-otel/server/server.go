@@ -16,7 +16,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
+	"github.com/flashcatcloud/Demo/go-otel/pkg/otel"
 	"github.com/flashcatcloud/Demo/go-otel/pkg/model"
 	"github.com/flashcatcloud/Demo/go-otel/pkg/redis"
 )
@@ -34,7 +34,7 @@ func main() {
 	model.RecordMetrics()
 
 	// 设置 OpenTelemetry.
-	otelShutdown, err := trace.SetupOTelSDK(ctx)
+	otelShutdown, err := otel.SetupOTelSDK(ctx)
 	if err != nil {
 		panic(err)
 	}

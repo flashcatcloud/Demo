@@ -1,4 +1,4 @@
-package trace
+package otel
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
@@ -20,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 )
 
 // SetupOTelSDK 引导 OpenTelemetry pipeline。
@@ -58,6 +58,15 @@ func SetupOTelSDK(ctx context.Context) (shutdown func(context.Context) error, er
 	}
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
+
+	// 设置metric provider.
+	metricProvider, err := newMeterProvider(ctx)
+	if err != nil {
+		handleErr(err)
+		return
+	}
+	shutdownFuncs = append(shutdownFuncs, metricProvider.Shutdown)
+	otel.SetMeterProvider(metricProvider)
 
 	// Set up logger provider.
 	loggerProvider, err := newLoggerProvider()
@@ -120,8 +129,11 @@ func newTraceProvider(ctx context.Context) (*trace.TracerProvider, error) {
 	return traceProvider, nil
 }
 
-func newMeterProvider() (*metric.MeterProvider, error) {
-	metricExporter, err := stdoutmetric.New()
+func newMeterProvider(ctx context.Context) (*metric.MeterProvider, error) {
+	metricExporter, err := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+		otlpmetrichttp.WithInsecure())
+
 	if err != nil {
 		return nil, err
 	}

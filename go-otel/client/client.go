@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel"
 	gotrace "go.opentelemetry.io/otel/trace"
 
-	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
+	pkgotel "github.com/flashcatcloud/Demo/go-otel/pkg/otel"
 )
 
 // Client 客户端结构体
@@ -58,7 +58,7 @@ func main() {
 	ctx := context.Background()
 
 	// 设置OpenTelemetry
-	shutdown, err := trace.SetupOTelSDK(ctx)
+	shutdown, err := pkgotel.SetupOTelSDK(ctx)
 	handleErr(err, "设置OpenTelemetry失败")
 	defer func() {
 		err = errors.Join(err, shutdown(ctx))

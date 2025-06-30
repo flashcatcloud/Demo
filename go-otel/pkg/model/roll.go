@@ -18,7 +18,10 @@ import (
 	"github.com/flashcatcloud/Demo/go-otel/pkg/mcp"
 	"github.com/flashcatcloud/Demo/go-otel/pkg/redis"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/metric"
 )
+
+const name = "go.opentelemetry.io/otel/example/dice"
 
 var (
 	// 初始化
@@ -26,7 +29,20 @@ var (
 		Name: "myapp_processed_ops_total",
 		Help: "The total number of processed events",
 	})
+
+	meter   = otel.Meter(name)
+	rollCnt metric.Int64Counter
 )
+
+func init() {
+	var err error
+	rollCnt, err = meter.Int64Counter("dice.rolls",
+		metric.WithDescription("The number of rolls by roll value"),
+		metric.WithUnit("{roll}"))
+	if err != nil {
+		panic(err)
+	}
+}
 
 func RecordMetrics() {
 	// 注册opsProcessed
@@ -53,7 +69,6 @@ func Roll(c *gin.Context) {
 
 	opsProcessed.Inc()
 	// 摇骰子次数的指标 +1
-	// rollCnt.Add(ctx, 1, metric.WithAttributes(rollValueAttr))
 
 	c.JSON(http.StatusOK, gin.H{"msg": number})
 }
@@ -92,6 +107,8 @@ func rollOnce(ctx context.Context) (int, error) {
 	}
 
 	span.SetAttributes(attribute.Int("final_number", number))
+	rollValueAttr := attribute.Int("roll.value", number)
+	rollCnt.Add(ctx, 1, metric.WithAttributes(rollValueAttr))
 
 	if err = redis.DoSomething(ctx, redis.Rdb); err != nil {
 		span.SetStatus(codes.Error, err.Error())

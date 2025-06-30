@@ -20,7 +20,7 @@ import (
 
 	"github.com/flashcatcloud/Demo/go-otel/pkg/model"
 	"github.com/flashcatcloud/Demo/go-otel/pkg/redis"
-	"github.com/flashcatcloud/Demo/go-otel/pkg/trace"
+	"github.com/flashcatcloud/Demo/go-otel/pkg/otel"
 )
 
 func init() {
@@ -33,7 +33,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	shutdown := trace.InitOpenTelemetry()
+	shutdown := otel.InitOpenTelemetry()
 	defer shutdown()
 
 	model.RecordMetrics()
