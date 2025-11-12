@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.28.0"
 )
 
 // SetupOTelSDK 引导 OpenTelemetry pipeline。
@@ -114,6 +115,8 @@ func newTraceProvider(ctx context.Context) (*trace.TracerProvider, error) {
 			attribute.String("service.name", os.Getenv("OTEL_SERVICE_NAME")),
 			attribute.String("service.instance.id", uuid.NewString()),
 			attribute.String("library.language", "go"),
+			//semconv.DeploymentEnvironmentNameKey
+			semconv.DeploymentEnvironmentName(os.Getenv("DEPLOY_ENV")),
 		),
 	)
 	if err != nil {
@@ -147,7 +150,10 @@ func newMeterProvider(ctx context.Context) (*metric.MeterProvider, error) {
 }
 
 func newLoggerProvider() (*log.LoggerProvider, error) {
-	l, err := os.OpenFile("./server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err := os.MkdirAll("logs", 0755); err != nil {
+		panic(err)
+	}
+	l, err := os.OpenFile("./logs/server.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		panic(err)
 	}
