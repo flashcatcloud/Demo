@@ -24,10 +24,12 @@ func initMysql() {
 		os.Getenv("DB_PASSWORD"),
 		os.Getenv("DB_ADDRESS"),
 		os.Getenv("DB_NAME"))
-	db, err = otelsql.Open("mysql", dsn, otelsql.WithAttributes(
-		semconv.DBSystemMySQL,
-		semconv.ServerAddress(os.Getenv("DB_ADDRESS")),
-	))
+	db, err = otelsql.Open("mysql", dsn,
+		otelsql.WithAttributes(
+			semconv.DBSystemMySQL,
+			semconv.ServerAddress(os.Getenv("DB_ADDRESS"))),
+		otelsql.WithDisableSkipErrMeasurement(true),
+	)
 	if err != nil {
 		panic(err)
 	}
