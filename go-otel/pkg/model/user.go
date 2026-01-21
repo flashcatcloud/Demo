@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-
 	"github.com/gin-gonic/gin"
 	"github.com/XSAM/otelsql"
 	semconv "go.opentelemetry.io/otel/semconv/v1.28.0"
+	"net"
 )
 
 var db *sql.DB
@@ -27,7 +27,8 @@ func initMysql() {
 	db, err = otelsql.Open("mysql", dsn,
 		otelsql.WithAttributes(
 			semconv.DBSystemMySQL,
-			semconv.ServerAddress(os.Getenv("DB_ADDRESS"))),
+			semconv.ServerAddress(net.JoinHostPort(os.Getenv("DB_ADDRESS"), os.Getenv("DB_PORT"))),
+			semconv.DBNamespace(os.Getenv("DB_NAME"))),
 		otelsql.WithDisableSkipErrMeasurement(true),
 	)
 	if err != nil {

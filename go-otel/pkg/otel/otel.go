@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	semconv "go.opentelemetry.io/otel/semconv/v1.28.0"
 )
 
@@ -133,9 +134,26 @@ func newTraceProvider(ctx context.Context) (*trace.TracerProvider, error) {
 }
 
 func newMeterProvider(ctx context.Context) (*metric.MeterProvider, error) {
-	metricExporter, err := otlpmetrichttp.New(ctx,
-		otlpmetrichttp.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
-		otlpmetrichttp.WithInsecure())
+	var metricExporter metric.Exporter
+	var err error
+
+	// 检查协议配置，优先使用 OTEL_EXPORTER_OTLP_TRACES_PROTOCOL，
+	// 如果未设置则尝试 OTEL_EXPORTER_OTLP_PROTOCOL
+	protocol := os.Getenv("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL")
+	if protocol == "" {
+		protocol = os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
+	}
+
+	// 根据协议选择相应的 exporter
+	if protocol == "grpc" {
+		metricExporter, err = otlpmetricgrpc.New(ctx,
+			otlpmetricgrpc.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+			otlpmetricgrpc.WithInsecure())
+	} else {
+		metricExporter, err = otlpmetrichttp.New(ctx,
+			otlpmetrichttp.WithEndpoint(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+			otlpmetrichttp.WithInsecure())
+	}
 
 	if err != nil {
 		return nil, err

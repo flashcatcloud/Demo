@@ -2,7 +2,6 @@
 
 sh /home/flashcat/server/start.sh
 # 等待server监听端口
-#!/bin/bash
 
 # 要检查的端口号
 PORT=$GO_DEMO_SERVER_PORT
