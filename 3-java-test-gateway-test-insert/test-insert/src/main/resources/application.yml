@@ -1,0 +1,27 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: test-insert
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/order_fulfillment?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USER:mockotel}
+    password: ${DB_PASSWORD:mockotel_pwd}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+
+logging:
+  file:
+    name: ${LOG_FILE:/datafc/test-insert/logs/test-insert.log}
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level service=${spring.application.name} trace_id=%X{trace_id:-} span_id=%X{span_id:-} thread=%thread logger=%logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level service=${spring.application.name} trace_id=%X{trace_id:-} span_id=%X{span_id:-} thread=%thread logger=%logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOG_FILE_PATTERN:/datafc/test-insert/logs/test-insert.%d{yyyy-MM-dd}.%i.log.gz}
+      max-file-size: 100MB
+      max-history: 14
+      total-size-cap: 2GB

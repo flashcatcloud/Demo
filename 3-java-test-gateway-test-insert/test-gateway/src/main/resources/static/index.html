@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mock OTel Global View</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #17202a;
+      background: #f6f8fb;
+    }
+    header {
+      padding: 18px 28px;
+      background: #ffffff;
+      border-bottom: 1px solid #d9e1ec;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 16px;
+      padding: 16px 28px 28px;
+    }
+    section, .panel {
+      background: #ffffff;
+      border: 1px solid #d9e1ec;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+    .topology {
+      min-height: 420px;
+    }
+    svg {
+      width: 100%;
+      height: 420px;
+      border: 1px solid #edf1f6;
+      border-radius: 6px;
+      background: #fbfcfe;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid #dfe6ef;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfe;
+    }
+    .type {
+      font-size: 11px;
+      color: #5c6f82;
+      text-transform: uppercase;
+    }
+    .name {
+      margin-top: 3px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .status {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #e8f7ef;
+      color: #157347;
+    }
+    .status.WARN {
+      background: #fff4db;
+      color: #9a6700;
+    }
+    ul {
+      padding-left: 18px;
+      margin: 8px 0 0;
+      line-height: 1.55;
+    }
+    code {
+      font-size: 12px;
+      color: #334155;
+      background: #eef2f7;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>三模块 OTel 验收全局视图</h1>
+</header>
+<main>
+  <section class="topology">
+    <h2>对象关系</h2>
+    <svg id="topology" viewBox="0 0 860 420" role="img" aria-label="global topology"></svg>
+  </section>
+  <section>
+    <h2>影响范围与上下文</h2>
+    <div id="impact"></div>
+  </section>
+  <section>
+    <h2>对象清单</h2>
+    <div id="nodes" class="grid"></div>
+  </section>
+  <section>
+    <h2>采集数据</h2>
+    <div id="telemetry"></div>
+  </section>
+</main>
+<script>
+const positions = {
+  "svc-gateway": [120, 80],
+  "api-insert": [330, 40],
+  "api-query": [330, 130],
+  "svc-insert": [540, 40],
+  "svc-query": [540, 130],
+  "db-events": [720, 85],
+  "host-gateway": [120, 300],
+  "host-a": [540, 300],
+  "host-b": [720, 300],
+  "exception-slow-query": [540, 220]
+};
+
+function labelFor(id, nodes) {
+  return nodes.find(node => node.id === id)?.name || id;
+}
+
+function drawTopology(data) {
+  const svg = document.getElementById("topology");
+  const nodes = data.nodes;
+  const edges = data.edges;
+  svg.innerHTML = "";
+  edges.forEach(edge => {
+    const [x1, y1] = positions[edge.source];
+    const [x2, y2] = positions[edge.target];
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", x1);
+    line.setAttribute("y1", y1);
+    line.setAttribute("x2", x2);
+    line.setAttribute("y2", y2);
+    line.setAttribute("stroke", edge.relation.includes("affects") ? "#d97706" : "#8aa0b8");
+    line.setAttribute("stroke-width", "2");
+    svg.appendChild(line);
+  });
+  nodes.forEach(node => {
+    const [x, y] = positions[node.id];
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", x - 72);
+    rect.setAttribute("y", y - 24);
+    rect.setAttribute("width", "144");
+    rect.setAttribute("height", "48");
+    rect.setAttribute("rx", "8");
+    rect.setAttribute("fill", node.status === "WARN" ? "#fff7e6" : "#ffffff");
+    rect.setAttribute("stroke", node.status === "WARN" ? "#d97706" : "#6d8bab");
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    title.setAttribute("x", x);
+    title.setAttribute("y", y - 4);
+    title.setAttribute("text-anchor", "middle");
+    title.setAttribute("font-size", "12");
+    title.setAttribute("font-weight", "700");
+    title.textContent = labelFor(node.id, nodes);
+    const type = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    type.setAttribute("x", x);
+    type.setAttribute("y", y + 14);
+    type.setAttribute("text-anchor", "middle");
+    type.setAttribute("font-size", "10");
+    type.setAttribute("fill", "#60758a");
+    type.textContent = node.type + " / " + node.status;
+    group.append(rect, title, type);
+    svg.appendChild(group);
+  });
+}
+
+function renderCards(data) {
+  document.getElementById("nodes").innerHTML = data.nodes.map(node => `
+    <div class="card">
+      <div class="type">${node.type}</div>
+      <div class="name">${node.name}</div>
+      <span class="status ${node.status}">${node.status}</span>
+      <p>${node.description}</p>
+    </div>
+  `).join("");
+  document.getElementById("impact").innerHTML = `
+    <div class="card">
+      <div class="type">Abnormal Object</div>
+      <div class="name">${data.impact.abnormalObject}</div>
+      <span class="status ${data.impact.status}">${data.impact.status}</span>
+      <ul>
+        <li>影响 API：<code>${data.impact.affectedApis.join(", ")}</code></li>
+        <li>影响服务：<code>${data.impact.affectedServices.join(", ")}</code></li>
+        <li>影响数据库：<code>${data.impact.affectedDatabase}</code></li>
+        ${data.impact.context.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+  document.getElementById("telemetry").innerHTML = ["metrics", "logs", "traces"].map(key => `
+    <div class="card">
+      <div class="type">${key}</div>
+      <ul>${data.telemetry[key].map(item => `<li>${item}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+}
+
+fetch("/api/global-view")
+  .then(response => response.json())
+  .then(data => {
+    drawTopology(data);
+    renderCards(data);
+  });
+</script>
+</body>
+</html>

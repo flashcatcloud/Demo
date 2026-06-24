@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: test-gateway
+
+logging:
+  file:
+    name: ${LOG_FILE:/datafc/test-gateway/logs/test-gateway.log}
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level service=${spring.application.name} trace_id=%X{trace_id:-} span_id=%X{span_id:-} thread=%thread logger=%logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level service=${spring.application.name} trace_id=%X{trace_id:-} span_id=%X{span_id:-} thread=%thread logger=%logger{36} - %msg%n"
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOG_FILE_PATTERN:/datafc/test-gateway/logs/test-gateway.%d{yyyy-MM-dd}.%i.log.gz}
+      max-file-size: 100MB
+      max-history: 14
+      total-size-cap: 2GB
+
+sample:
+  insert-url: ${INSERT_URL:http://localhost:8081/api/orders}
+  query-url: ${QUERY_URL:http://localhost:8082/api/orders}
+  query-health-url: ${QUERY_HEALTH_URL:http://localhost:8082/api/health}
+  gateway-flow-url: ${GATEWAY_FLOW_URL:http://localhost:8080/api/gateway/flow}
+  fixed-delay: ${GATEWAY_DELAY_MS:5000}

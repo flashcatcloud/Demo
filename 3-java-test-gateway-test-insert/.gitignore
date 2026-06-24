@@ -1,0 +1,8 @@
+target/
+*/target/
+data*
+mockotel.db
+mockotel.db-*
+h2-data/
+*.mv.db
+*.trace.db

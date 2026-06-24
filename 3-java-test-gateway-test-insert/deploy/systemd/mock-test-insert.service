@@ -1,0 +1,35 @@
+[Unit]
+Description=Mock OTel Sample - test-insert
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/mock-otel-sample/app
+Environment=SERVER_PORT=8081
+Environment=DB_URL=jdbc:mysql://127.0.0.1:3306/order_fulfillment?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+Environment=DB_USER=mockotel
+Environment=DB_PASSWORD=mockotel_pwd
+EnvironmentFile=-/etc/mock-otel-sample/database.env
+Environment=LOG_FILE=/datafc/test-insert/logs/test-insert.log
+Environment=LOG_FILE_PATTERN=/datafc/test-insert/logs/test-insert.%%d{yyyy-MM-dd}.%%i.log.gz
+EnvironmentFile=/etc/mock-otel-sample/otel.env
+Environment=OTEL_SERVICE_NAME=test-insert
+Environment=OTEL_TRACES_EXPORTER=otlp
+Environment=OTEL_METRICS_EXPORTER=otlp
+Environment=OTEL_LOGS_EXPORTER=otlp
+Environment=OTEL_TRACES_SAMPLER=always_on
+Environment=OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED=true
+Environment=OTEL_INSTRUMENTATION_JDBC_ENABLED=true
+Environment=OTEL_INSTRUMENTATION_JDBC_DATASOURCE_ENABLED=true
+Environment=OTEL_INSTRUMENTATION_JDBC_STATEMENT_SANITIZER_ENABLED=false
+Environment=OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED=false
+Environment=OTEL_RESOURCE_ATTRIBUTES=deployment.environment=demo,service.namespace=java-sample,service.role=database-writer,db.system=mysql
+ExecStartPre=/usr/bin/mkdir -p /datafc/test-insert/logs
+ExecStart=/usr/bin/java -javaagent:/opt/mock-otel-sample/opentelemetry-javaagent.jar -jar /opt/mock-otel-sample/app/test-insert-0.0.1-SNAPSHOT.jar
+Restart=always
+RestartSec=5
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
