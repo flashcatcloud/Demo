@@ -29,9 +29,9 @@ Default runtime paths:
 /opt/mock-otel-sample/app/test-gateway-0.0.1-SNAPSHOT.jar
 /opt/mock-otel-sample/app/test-insert-0.0.1-SNAPSHOT.jar
 /opt/mock-otel-sample/app/test-query-0.0.1-SNAPSHOT.jar
-/datafc/test-gateway/logs/test-gateway.log
-/datafc/test-insert/logs/test-insert.log
-/datafc/test-query/logs/test-query.log
+/opt/mock-otel-sample/logs/test-gateway/test-gateway.log
+/opt/mock-otel-sample/logs/test-insert/test-insert.log
+/opt/mock-otel-sample/logs/test-query/test-query.log
 ```
 
 Default database:
@@ -92,7 +92,7 @@ DB_PASSWORD=<MYSQL_PASSWORD>
 ```bash
 mkdir -p /etc/mock-otel-sample
 mkdir -p /opt/mock-otel-sample/app
-mkdir -p /datafc/test-gateway/logs /datafc/test-insert/logs /datafc/test-query/logs
+mkdir -p /opt/mock-otel-sample/logs/test-gateway /opt/mock-otel-sample/logs/test-insert /opt/mock-otel-sample/logs/test-query
 ```
 
 ## 5. Download OpenTelemetry Java Agent
@@ -230,18 +230,18 @@ journalctl -u mock-test-gateway.service -u mock-test-insert.service -u mock-test
 File logs:
 
 ```bash
-tail -n 50 /datafc/test-gateway/logs/test-gateway.log
-tail -n 50 /datafc/test-insert/logs/test-insert.log
-tail -n 50 /datafc/test-query/logs/test-query.log
+tail -n 50 /opt/mock-otel-sample/logs/test-gateway/test-gateway.log
+tail -n 50 /opt/mock-otel-sample/logs/test-insert/test-insert.log
+tail -n 50 /opt/mock-otel-sample/logs/test-query/test-query.log
 ```
 
 Verify trace context in logs:
 
 ```bash
 grep -hE 'trace_id=[0-9a-f]{32}' \
-  /datafc/test-gateway/logs/test-gateway.log \
-  /datafc/test-insert/logs/test-insert.log \
-  /datafc/test-query/logs/test-query.log | tail -n 20
+  /opt/mock-otel-sample/logs/test-gateway/test-gateway.log \
+  /opt/mock-otel-sample/logs/test-insert/test-insert.log \
+  /opt/mock-otel-sample/logs/test-query/test-query.log | tail -n 20
 ```
 
 Business mock logs should look like:
@@ -275,9 +275,9 @@ Extract recent Trace IDs from logs:
 
 ```bash
 grep -hE 'trace_id=[0-9a-f]{32}' \
-  /datafc/test-gateway/logs/test-gateway.log \
-  /datafc/test-insert/logs/test-insert.log \
-  /datafc/test-query/logs/test-query.log \
+  /opt/mock-otel-sample/logs/test-gateway/test-gateway.log \
+  /opt/mock-otel-sample/logs/test-insert/test-insert.log \
+  /opt/mock-otel-sample/logs/test-query/test-query.log \
   | tail -n 50 \
   | sed -n 's/.*trace_id=\([0-9a-f]\{32\}\).*/\1/p' \
   | sort -u
@@ -354,7 +354,6 @@ Remove sample files:
 
 ```bash
 rm -rf /opt/mock-otel-sample
-rm -rf /datafc/test-gateway /datafc/test-insert /datafc/test-query
 rm -f /etc/systemd/system/mock-test-gateway.service
 rm -f /etc/systemd/system/mock-test-insert.service
 rm -f /etc/systemd/system/mock-test-query.service

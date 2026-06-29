@@ -152,12 +152,12 @@ Application logs use the same console and file pattern in every module:
 service=<service-name> trace_id=<otel-trace-id> span_id=<otel-span-id> thread=<thread-name> logger=<logger> - <message>
 ```
 
-Each service also writes rolling log files under `/datafc/<service>/logs/`:
+Each service also writes rolling log files under `/opt/mock-otel-sample/logs/<service>/`:
 
 ```text
-/datafc/test-gateway/logs/test-gateway.log
-/datafc/test-insert/logs/test-insert.log
-/datafc/test-query/logs/test-query.log
+/opt/mock-otel-sample/logs/test-gateway/test-gateway.log
+/opt/mock-otel-sample/logs/test-insert/test-insert.log
+/opt/mock-otel-sample/logs/test-query/test-query.log
 ```
 
 The default rolling policy keeps 14 days, rolls at 100 MB per file, and caps total archived logs at 2 GB per service.
@@ -201,7 +201,7 @@ table: orders
 
 ```bash
 mkdir -p /opt/mock-otel-sample/app
-mkdir -p /datafc/test-gateway/logs /datafc/test-insert/logs /datafc/test-query/logs
+mkdir -p /opt/mock-otel-sample/logs/test-gateway /opt/mock-otel-sample/logs/test-insert /opt/mock-otel-sample/logs/test-query
 curl -L -o /opt/mock-otel-sample/opentelemetry-javaagent.jar \
   https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
 ```
@@ -266,9 +266,9 @@ ps -ef | grep opentelemetry-javaagent | grep -v grep
 journalctl -u mock-test-gateway.service -u mock-test-insert.service -u mock-test-query.service -n 80 --no-pager \
   | grep 'trace_id='
 
-tail -n 20 /datafc/test-gateway/logs/test-gateway.log
-tail -n 20 /datafc/test-insert/logs/test-insert.log
-tail -n 20 /datafc/test-query/logs/test-query.log
+tail -n 20 /opt/mock-otel-sample/logs/test-gateway/test-gateway.log
+tail -n 20 /opt/mock-otel-sample/logs/test-insert/test-insert.log
+tail -n 20 /opt/mock-otel-sample/logs/test-query/test-query.log
 ```
 
 Expected results:
@@ -279,7 +279,7 @@ Expected results:
 - MySQL query returns the same row
 - Java process command line contains `-javaagent:/opt/mock-otel-sample/opentelemetry-javaagent.jar`
 - recent journal logs contain `trace_id=<32 hex chars>` and `span_id=<16 hex chars>` for request/scheduler logs
-- `/datafc/test-gateway/logs`, `/datafc/test-insert/logs`, and `/datafc/test-query/logs` contain service log files with the same `trace_id` and `span_id` fields
+- `/opt/mock-otel-sample/logs/test-gateway`, `/opt/mock-otel-sample/logs/test-insert`, and `/opt/mock-otel-sample/logs/test-query` contain service log files with the same `trace_id` and `span_id` fields
 
 ### 7. Cleanup
 
@@ -295,7 +295,7 @@ apt-get autoremove -y
 Delete sample files if needed:
 
 ```bash
-rm -rf /opt/mock-otel-sample /datafc/test-gateway /datafc/test-insert /datafc/test-query /etc/systemd/system/mock-test-*.service
+rm -rf /opt/mock-otel-sample /opt/mock-otel-sample/logs/test-gateway /opt/mock-otel-sample/logs/test-insert /opt/mock-otel-sample/logs/test-query /etc/systemd/system/mock-test-*.service
 ```
 
 ## Acceptance Mapping

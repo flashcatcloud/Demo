@@ -128,9 +128,9 @@ ls -d test-gateway test-insert test-query
 日志文件会写到：
 
 ```text
-/datafc/test-gateway/logs/test-gateway.log
-/datafc/test-insert/logs/test-insert.log
-/datafc/test-query/logs/test-query.log
+/opt/mock-otel-sample/logs/test-gateway/test-gateway.log
+/opt/mock-otel-sample/logs/test-insert/test-insert.log
+/opt/mock-otel-sample/logs/test-query/test-query.log
 ```
 
 systemd 服务文件会安装到：
@@ -167,7 +167,7 @@ java -version
 ```bash
 mkdir -p /etc/mock-otel-sample
 mkdir -p /opt/mock-otel-sample/app
-mkdir -p /datafc/test-gateway/logs /datafc/test-insert/logs /datafc/test-query/logs
+mkdir -p /opt/mock-otel-sample/logs/test-gateway /opt/mock-otel-sample/logs/test-insert /opt/mock-otel-sample/logs/test-query
 ```
 
 检查目录：
@@ -175,7 +175,7 @@ mkdir -p /datafc/test-gateway/logs /datafc/test-insert/logs /datafc/test-query/l
 ```bash
 ls -ld /etc/mock-otel-sample
 ls -ld /opt/mock-otel-sample/app
-ls -ld /datafc/test-gateway/logs /datafc/test-insert/logs /datafc/test-query/logs
+ls -ld /opt/mock-otel-sample/logs/test-gateway /opt/mock-otel-sample/logs/test-insert /opt/mock-otel-sample/logs/test-query
 ```
 
 ## 5. 下载 OpenTelemetry Java Agent
@@ -563,18 +563,18 @@ journalctl -u mock-test-gateway.service -u mock-test-insert.service -u mock-test
 ### 12.2 查看文件日志
 
 ```bash
-tail -n 50 /datafc/test-gateway/logs/test-gateway.log
-tail -n 50 /datafc/test-insert/logs/test-insert.log
-tail -n 50 /datafc/test-query/logs/test-query.log
+tail -n 50 /opt/mock-otel-sample/logs/test-gateway/test-gateway.log
+tail -n 50 /opt/mock-otel-sample/logs/test-insert/test-insert.log
+tail -n 50 /opt/mock-otel-sample/logs/test-query/test-query.log
 ```
 
 ### 12.3 验证日志中是否带 trace_id
 
 ```bash
 grep -hE 'trace_id=[0-9a-f]{32}' \
-  /datafc/test-gateway/logs/test-gateway.log \
-  /datafc/test-insert/logs/test-insert.log \
-  /datafc/test-query/logs/test-query.log | tail -n 20
+  /opt/mock-otel-sample/logs/test-gateway/test-gateway.log \
+  /opt/mock-otel-sample/logs/test-insert/test-insert.log \
+  /opt/mock-otel-sample/logs/test-query/test-query.log | tail -n 20
 ```
 
 预期日志格式类似：
@@ -616,9 +616,9 @@ supported: [POST]
 
 ```bash
 grep -hE 'trace_id=[0-9a-f]{32}' \
-  /datafc/test-gateway/logs/test-gateway.log \
-  /datafc/test-insert/logs/test-insert.log \
-  /datafc/test-query/logs/test-query.log \
+  /opt/mock-otel-sample/logs/test-gateway/test-gateway.log \
+  /opt/mock-otel-sample/logs/test-insert/test-insert.log \
+  /opt/mock-otel-sample/logs/test-query/test-query.log \
   | tail -n 50 \
   | sed -n 's/.*trace_id=\([0-9a-f]\{32\}\).*/\1/p' \
   | sort -u
@@ -783,7 +783,6 @@ systemctl disable --now mock-test-gateway.service mock-test-query.service mock-t
 
 ```bash
 rm -rf /opt/mock-otel-sample
-rm -rf /datafc/test-gateway /datafc/test-insert /datafc/test-query
 rm -f /etc/systemd/system/mock-test-gateway.service
 rm -f /etc/systemd/system/mock-test-insert.service
 rm -f /etc/systemd/system/mock-test-query.service
@@ -817,7 +816,7 @@ apt-get autoremove -y
 [ ] mock-test-gateway.service 是 active
 [ ] 8080、8081、8082 端口已监听
 [ ] /api/health 返回 UP
-[ ] /datafc/test-*/logs/*.log 有日志
+[ ] /opt/mock-otel-sample/logs/test-*/*.log 有日志
 [ ] 日志中有 trace_id 和 span_id
 [ ] ps 中能看到 -javaagent
 [ ] APM/Trace UI 能搜到日志中的 trace_id

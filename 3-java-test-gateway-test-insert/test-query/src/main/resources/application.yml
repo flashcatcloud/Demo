@@ -15,13 +15,13 @@ spring:
 
 logging:
   file:
-    name: ${LOG_FILE:/datafc/test-query/logs/test-query.log}
+    name: ${LOG_FILE:/opt/mock-otel-sample/logs/test-query/test-query.log}
   pattern:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level service=${spring.application.name} trace_id=%X{trace_id:-} span_id=%X{span_id:-} thread=%thread logger=%logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level service=${spring.application.name} trace_id=%X{trace_id:-} span_id=%X{span_id:-} thread=%thread logger=%logger{36} - %msg%n"
   logback:
     rollingpolicy:
-      file-name-pattern: ${LOG_FILE_PATTERN:/datafc/test-query/logs/test-query.%d{yyyy-MM-dd}.%i.log.gz}
+      file-name-pattern: ${LOG_FILE_PATTERN:/opt/mock-otel-sample/logs/test-query/test-query.%d{yyyy-MM-dd}.%i.log.gz}
       max-file-size: 100MB
       max-history: 14
       total-size-cap: 2GB
