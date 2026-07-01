@@ -151,14 +151,20 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-21-jre-headless curl
 ```
 
 如果准备在目标机器本机安装 MySQL，后面的数据库章节会单独安装 `mysql-server`。
+如果选择在目标机器上直接构建 Jar 包，还需要安装 JDK：
+
+```bash
+DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-21-jdk-headless
+```
 
 检查 Java：
 
 ```bash
 java -version
+javac -version
 ```
 
-预期 Java 版本为 17 或更高。推荐 OpenJDK 21。
+预期 Java 版本为 17 或更高。推荐 OpenJDK 21。只有运行服务时可以只安装 JRE；如果要执行 `mvn clean package`，必须能正常执行 `javac -version`。
 
 ## 4. 创建运行目录
 
@@ -308,7 +314,8 @@ mysql -umockotel -pmockotel_pwd -h127.0.0.1 order_fulfillment \
 如果目标机器可以安装 Maven，可以执行：
 
 ```bash
-apt-get install -y maven
+DEBIAN_FRONTEND=noninteractive apt-get install -y maven openjdk-21-jdk-headless
+javac -version
 ```
 
 进入项目目录：
@@ -395,6 +402,15 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 ```
 
 注意：上面的域名只是示例。实际部署时，应替换成现场 Collector 地址。
+
+启动服务前必须确认 `otel.env` 中没有保留 `<...>` 占位符：
+
+```bash
+grep -Eq '^OTEL_EXPORTER_OTLP_ENDPOINT=https?://[^<>[:space:]]+' /etc/mock-otel-sample/otel.env
+grep -q '^OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf$' /etc/mock-otel-sample/otel.env
+```
+
+如果第一条命令失败，说明 Collector 地址没有填写或仍是占位符。不要继续启动服务；否则服务即使能起来，也可能没有真实 trace 上下文。
 
 ### 8.2 安装服务文件
 
@@ -726,6 +742,7 @@ OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED=true
 ```
 
 还要确认日志是在请求上下文中产生的。服务启动日志一般没有 `trace_id`，这是正常现象。
+如果请求日志也没有 `trace_id`，继续确认 `/etc/mock-otel-sample/otel.env` 中的 `OTEL_EXPORTER_OTLP_ENDPOINT` 已替换为真实 Collector 地址，不是 `<OTEL_COLLECTOR_HOST>` 占位符。
 
 ### 15.4 UI 中看不到 trace
 

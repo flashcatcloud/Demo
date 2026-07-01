@@ -22,6 +22,7 @@ Environment=OTEL_LOGS_EXPORTER=otlp
 Environment=OTEL_TRACES_SAMPLER=always_on
 Environment=OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED=true
 Environment=OTEL_RESOURCE_ATTRIBUTES=deployment.environment=demo,service.namespace=java-sample,service.role=request-generator
+ExecStartPre=/usr/bin/grep -Eq ^OTEL_EXPORTER_OTLP_ENDPOINT=https?://[^<>[:space:]]+ /etc/mock-otel-sample/otel.env
 ExecStartPre=/usr/bin/mkdir -p /opt/mock-otel-sample/logs/test-gateway
 ExecStart=/usr/bin/java -javaagent:/opt/mock-otel-sample/opentelemetry-javaagent.jar -jar /opt/mock-otel-sample/app/test-gateway-0.0.1-SNAPSHOT.jar
 Restart=always

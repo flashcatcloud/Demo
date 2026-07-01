@@ -26,6 +26,7 @@ Environment=OTEL_INSTRUMENTATION_JDBC_DATASOURCE_ENABLED=true
 Environment=OTEL_INSTRUMENTATION_JDBC_STATEMENT_SANITIZER_ENABLED=false
 Environment=OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED=false
 Environment=OTEL_RESOURCE_ATTRIBUTES=deployment.environment=demo,service.namespace=java-sample,service.role=database-reader,db.system=mysql
+ExecStartPre=/usr/bin/grep -Eq ^OTEL_EXPORTER_OTLP_ENDPOINT=https?://[^<>[:space:]]+ /etc/mock-otel-sample/otel.env
 ExecStartPre=/usr/bin/mkdir -p /opt/mock-otel-sample/logs/test-query
 ExecStart=/usr/bin/java -javaagent:/opt/mock-otel-sample/opentelemetry-javaagent.jar -jar /opt/mock-otel-sample/app/test-query-0.0.1-SNAPSHOT.jar
 Restart=always

@@ -56,11 +56,19 @@ systemctl is-active mysql
 java -version
 ```
 
+If you will build the jars on the target host, also install a JDK:
+
+```bash
+DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-21-jdk-headless
+javac -version
+```
+
 Expected:
 
 ```text
 mysql is active
 java version is 17 or later
+javac version is 17 or later when building on the target host
 ```
 
 ## 3. Initialize Database
@@ -109,6 +117,8 @@ ls -lh /opt/mock-otel-sample/opentelemetry-javaagent.jar
 Build on any machine with Maven and JDK 17+:
 
 ```bash
+DEBIAN_FRONTEND=noninteractive apt-get install -y maven openjdk-21-jdk-headless
+javac -version
 mvn clean package
 ```
 
@@ -143,10 +153,14 @@ Then run:
 ```bash
 cp deploy/otel.env.example /etc/mock-otel-sample/otel.env
 # Edit /etc/mock-otel-sample/otel.env and set the real Collector endpoint.
+grep -Eq '^OTEL_EXPORTER_OTLP_ENDPOINT=https?://[^<>[:space:]]+' /etc/mock-otel-sample/otel.env
+grep -q '^OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf$' /etc/mock-otel-sample/otel.env
 systemctl daemon-reload
 systemctl enable --now mock-test-insert.service mock-test-query.service mock-test-gateway.service
 systemctl is-active mock-test-insert.service mock-test-query.service mock-test-gateway.service
 ```
+
+If the endpoint validation fails, the Collector endpoint is still missing or still contains a placeholder. Do not start the services until it is replaced; otherwise the services may run without real trace context in logs.
 
 Expected:
 
@@ -328,6 +342,8 @@ curl -sv --max-time 5 http://<OTEL_COLLECTOR_HOST>:<OTEL_COLLECTOR_HTTP_PORT>/v1
 journalctl -u mock-test-gateway.service -u mock-test-insert.service -u mock-test-query.service --since '10 minutes ago' --no-pager \
   | grep -Ei 'otel|export|otlp|failed|error|exception|timeout|refused|unavailable'
 ```
+
+Also confirm `/etc/mock-otel-sample/otel.env` contains a real `OTEL_EXPORTER_OTLP_ENDPOINT`, not the `<OTEL_COLLECTOR_HOST>` placeholder.
 
 If needed, temporarily enable Java Agent debug logs in the systemd unit:
 
