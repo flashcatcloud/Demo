@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: categraf-operator-config
+  namespace: flashcat
+data:
+  FLASHCAT_ADDR: "http://127.0.0.1:19000"
+  CLUSTER_NAME: "Kubernetes-cluster"
+  DEFAULT_WAIT_DURATION: "24h"
+  HEARTBEAT_INTERVAL: "10s"
+  HEARTBEAT_STOP_FACTOR: "3"
+  RECONCILE_INTERVAL: "5m"
+  MAX_NODE_STALE_DURATION: "168h"   # 7 days, set to "0" to disable
+  NAMESPACE: "flashcat"

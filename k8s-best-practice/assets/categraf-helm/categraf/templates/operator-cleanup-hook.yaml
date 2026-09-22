@@ -1,0 +1,100 @@
+{{- /*
+pre-delete hook：helm uninstall 时先于所有 release 资源删除执行。
+流程：停 nodeAgent DaemonSet / ksmAgent StatefulSet -> 等设备心跳停 -> 删 Flashcat 设备。
+独立 SA + namespace 级 Role，最小权限（仅 delete 本命名空间 ds/sts），不用 operator 的长期权限。
+只有 operator.enabled 且任一 cleanup 开关打开时才创建。
+*/ -}}
+{{- if and .Values.operator.enabled (or .Values.operator.cleanup.nodeCategraf .Values.operator.cleanup.ksmCategraf) }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+# 仅允许删除本命名空间内的 operator Deployment、nodeAgent DaemonSet 与
+# ksmAgent StatefulSet（卸载清理先停 operator 自身，避免双执行者竞态）。
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "statefulsets"]
+  verbs: ["delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+  namespace: {{ include "categraf.namespace" . }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 420
+  template:
+    metadata:
+      labels:
+        app: categraf
+        component: operator-cleanup
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-cleanup") }}
+      restartPolicy: Never
+      containers:
+      - name: cleanup
+        image: "{{ .Values.operator.image }}"
+        imagePullPolicy: {{ .Values.operator.pullPolicy }}
+        args: ["--cleanup-once"]
+        envFrom:
+        - configMapRef:
+            name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-config") }}
+        env:
+        - name: FLASHCAT_USER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-secret") }}
+              key: user-token
+              optional: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+{{- end }}

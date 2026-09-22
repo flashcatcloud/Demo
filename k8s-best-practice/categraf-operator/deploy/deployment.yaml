@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: categraf-operator
+  namespace: flashcat
+  labels:
+    app: categraf
+    component: operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: categraf
+      component: operator
+  template:
+    metadata:
+      labels:
+        app: categraf
+        component: operator
+    spec:
+      serviceAccountName: categraf-operator
+      containers:
+      - name: operator
+        image: registry.flashcat.cloud/public/categraf-operator:0.0.7
+        imagePullPolicy: IfNotPresent
+        args:
+        - --leader-elect=true
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: categraf-operator-config
+        env:
+        - name: FLASHCAT_USER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: categraf-operator-secret
+              key: user-token
+              optional: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: categraf-operator-secret
+  namespace: flashcat
+stringData:
+  user-token: "<your-user-token>"

@@ -1,0 +1,181 @@
+# =============================================================================
+# K8S 指标监控采集配置
+# 布局：基础配置 / 节点级采集 / 集群级采集 / K8s 组件
+# 默认：除 K8s 组件外，全部安装并启用；K8s 组件按需开启
+# 版本：完整注释版（所有可配置项都在此，带 # 的为可选高级配置，取消注释即生效）
+# 默认使用精简版：values-examples/values.yaml（只保留最常用配置）
+# 说明：本文件是完整取值参考（helm 安装时用 -f 覆盖 chart 默认值）。
+#       以「未注释」的字段为准；未写出的键沿用 chart 自带默认值。
+# 用法：
+#   helm pull oci://registry.flashcat.cloud/public/charts/categraf   # 默认拉取 latest（最新版）
+#   tar xvf categraf-*.tgz
+#   cp categraf/values-examples/values.all.yaml my-values.yaml
+#   vim my-values.yaml                       # 填写下方「基础配置」必填项
+#   helm upgrade --install categraf ./categraf -n flashcat --create-namespace -f my-values.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 一、基础配置（部署前必改）
+# -----------------------------------------------------------------------------
+categraf:
+  serverAddr: "http://10.99.1.11:19000"   # 必填：Flashcat / Nightingale 服务端地址
+  heartbeatGid: ""                        # 可选：业务组 GID，配置后自动归入该业务组；不配则上报到未分组，可在 Flashcat 网页端手动管理
+  clusterName: "Kubernetes-cluster"       # 必填：同一 Flashcat 下必须全局唯一；多 Release 并存时每个 Release 使用不同值
+  env: "test"                             # 可选：环境标签，如 prod / test
+  # --- Prometheus 远程写入认证（可选，默认如下）---
+  # remoteWriteUser: "user001"
+  # remoteWritePassword: ""
+
+# 节点清理 Operator（自动清理已删除节点的设备）
+operator:
+  # 是否安装 Operator
+  enabled: true
+  # 镜像地址（内网/离线部署时改为你的镜像仓库）
+  image: registry.flashcat.cloud/public/categraf-operator:0.0.7
+  userToken: ""                           # enabled=true 时必填：Flashcat API Token
+  # --- 可选高级配置（默认如下，一般保持默认即可）---
+  # pullPolicy: IfNotPresent
+  # leaderElect: true                      # 启用 leader election，多副本部署时建议开启
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # env:
+  #   defaultWaitDuration: "4h"            # 节点下线到删除设备的观察期
+  #   heartbeatInterval: "10s"             # categraf 心跳间隔（用于判断心跳是否已停）
+  #   heartbeatStopFactor: "3"             # 心跳停止判定倍数：now - lastHeartbeat > interval × factor
+  #   reconcileInterval: "5m"              # 定时扫描周期
+  #   maxNodeStaleDuration: "168h"         # 失联节点（NotReady/Unknown）兜底清理阈值，设 "0" 关闭
+  #   flashcatAddr: ""                     # Flashcat 服务地址，留空则取 categraf.serverAddr
+  # 卸载 chart 时清理 Flashcat 资源的开关（默认开启；需要保留设备时改为 false）
+  cleanup:
+    # 删除该集群的 nodeCategraf 设备（nodeAgent targets，DaemonSet 部署）
+    nodeCategraf: true
+    # 删除该集群的 ksmCategraf 设备（ksmAgent targets，StatefulSet 部署）
+    ksmCategraf: true
+
+# -----------------------------------------------------------------------------
+# 二、节点级采集（Node Agent，DaemonSet，每节点一个）
+# -----------------------------------------------------------------------------
+nodeCategraf:
+  # 是否安装 Node Agent
+  enabled: true
+  # DaemonSet 名称由 Release 决定（<release>），并自动同步给 operator
+  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/categraf_ent:servicemap-v0.5.32）
+  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.32
+  # --- 可选高级配置（默认如下，一般保持默认即可）---
+  # pullPolicy: IfNotPresent
+  # resources:
+  #   requests:
+  #     cpu: 200m
+  #     memory: 512Mi
+  #   limits:
+  #     cpu: 2000m
+  #     memory: 2Gi
+  # tolerations:                           # 允许调度到带 NoSchedule 污点的节点（如 master）
+  #   - effect: NoSchedule
+  #     operator: Exists
+  # 上报标识（ident）取什么值（一般保持默认即可）
+  #   nodeName = K8s 节点名（默认，推荐）；如需 servicemap 采集，请保持 hostname: nodeName（ident 必须为节点名）
+  #   hostname = 宿主机 hostname
+  #   自定义：填模板，如 "${cluster}-$hostname"
+  #   可用占位符：${cluster} 集群名 / ${nodeName} 节点名 / $hostname 宿主机名 / $ip 节点IP
+  hostname: nodeName
+  # 容器权限（一般保持默认即可）
+  #   privileged: true（默认，推荐）= 功能全：能采集指标/读宿主文件，也能以宿主机视角执行诊断命令（命令通道全能力）
+  #   privileged: false            = 功能受限：只能“看”（指标/日志/dmesg），不能以宿主机视角执行命令、不能修改宿主机；
+  #                                  servicemap 自动降级为轮询模式（无 L7 解析），需要完整服务地图请保持 true
+  securityContext:
+    privileged: true
+  # host-exec 命令通道（FlashAI 巡检脚本进入宿主机执行；默认开启，不需要时改为 false）
+  hostExec:
+    enabled: true
+  inputs:
+    # 是否启用 kubelet/cadvisor 采集任务（容器指标 + kubelet 自身指标）
+    cadvisor: true
+    # 是否启用主机指标采集任务（node_exporter 插件）
+    nodeExporter: true
+    # 原生主机监控插件（Nightingale 风格指标，Flashcat 主机大盘默认匹配）
+    hostNative:
+      # 总开关：false 关闭全部；true 时按下面单个开关控制
+      enabled: true
+      # cpu / mem / disk / net / system / diskio / netstat / kernel / swap / process 默认全开，按需改 false 关闭
+      cpu: true
+      mem: true
+      disk: true
+      net: true
+      system: true
+      diskio: true
+      netstat: true
+      kernel: true
+      swap: true
+      process: true
+
+# -----------------------------------------------------------------------------
+# 三、集群级采集（KSM Agent，StatefulSet）
+# -----------------------------------------------------------------------------
+ksmCategraf:
+  # 是否安装 ksmCategraf
+  enabled: true
+  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/categraf_ent:v0.5.32）
+  image: registry.flashcat.cloud/public/categraf_ent:v0.5.32
+  # --- 可选高级配置（默认如下，一般保持默认即可）---
+  # pullPolicy: IfNotPresent
+  # replicas: 1
+  # resources:
+  #   requests:
+  #     cpu: 500m
+  #     memory: 512Mi
+  #   limits:
+  #     cpu: 1000m
+  #     memory: 1.5Gi
+  jobs:
+    # 是否启用 kubeStateMetrics 采集任务（K8s 对象状态指标，依赖 kube-state-metrics）
+    kubeStateMetrics: true
+
+kubeStateMetrics:
+  # 是否安装 kube-state-metrics（K8s 对象状态指标的数据源）
+  enabled: true
+  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/kube-state-metrics:v2.19.1）
+  image: registry.flashcat.cloud/public/kube-state-metrics/kube-state-metrics:v2.19.1
+  # --- 可选高级配置（默认如下，一般保持默认即可）---
+  # pullPolicy: IfNotPresent
+  # replicas: 1
+  # resources:
+  #   requests:
+  #     cpu: 200m
+  #     memory: 256Mi
+  #   limits:
+  #     cpu: 500m
+  #     memory: 1Gi
+
+appMetrics:
+  # 是否启用应用指标自动发现（抓取打了 metrics-scrape: "true" 标签的 Pod）
+  enabled: true
+
+# -----------------------------------------------------------------------------
+# 四、K8s 组件采集（示例默认关闭，需要时改为 true）
+# 注意：chart 自带默认值里 coreDns / networkPlugin / kubeProxy 默认是开的，
+#       本示例显式关掉以保持最小采集；controlPlane 默认即关闭。
+# -----------------------------------------------------------------------------
+kubeProxy:
+  # 是否启用 kube-proxy 采集任务（Node Agent 采集本机 127.0.0.1:10249）
+  enabled: false
+
+coreDns:
+  # 是否启用 CoreDNS 采集任务
+  enabled: false
+
+networkPlugin:
+  # 是否启用网络插件采集任务（按集群实际使用二选一）
+  calico:
+    enabled: false
+  cilium:
+    enabled: false
+
+controlPlane:
+  # 是否启用控制平面采集任务（apiserver / controller-manager / scheduler / etcd，仅 kubeadm 集群，需先放开 Master 监听地址）
+  enabled: false

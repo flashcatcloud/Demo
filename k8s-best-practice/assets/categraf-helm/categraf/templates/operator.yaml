@@ -1,0 +1,146 @@
+{{- if and .Values.operator.enabled (not .Values.operator.userToken) }}
+{{- fail "operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false" }}
+{{- end }}
+{{- if .Values.operator.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "categraf.clusterResourceName" (dict "root" . "suffix" "operator") }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: [nodes]
+  verbs: [get, list, watch]
+- apiGroups: ["apps"]
+  resources: [daemonsets]
+  verbs: [get, list, watch]
+- apiGroups: [coordination.k8s.io]
+  resources: [leases]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [""]
+  resources: [events]
+  verbs: [create, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "categraf.clusterResourceName" (dict "root" . "suffix" "operator") }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "categraf.clusterResourceName" (dict "root" . "suffix" "operator") }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator") }}
+  namespace: {{ include "categraf.namespace" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-config") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  FLASHCAT_ADDR: "{{ .Values.operator.env.flashcatAddr | default (include "categraf.serverAddr" .) }}"
+  CLUSTER_NAME: "{{ .Values.categraf.clusterName }}"
+  DEFAULT_WAIT_DURATION: "{{ .Values.operator.env.defaultWaitDuration }}"
+  HEARTBEAT_INTERVAL: "{{ .Values.operator.env.heartbeatInterval }}"
+  HEARTBEAT_STOP_FACTOR: "{{ .Values.operator.env.heartbeatStopFactor }}"
+  RECONCILE_INTERVAL: "{{ .Values.operator.env.reconcileInterval }}"
+  MAX_NODE_STALE_DURATION: "{{ .Values.operator.env.maxNodeStaleDuration }}"
+  NAMESPACE: "{{ include "categraf.namespace" . }}"
+  CLEANUP_NODE_CATEGRAF: "{{ .Values.operator.cleanup.nodeCategraf }}"
+  CLEANUP_KSM_CATEGRAF: "{{ .Values.operator.cleanup.ksmCategraf }}"
+  CATEGRAF_DAEMONSET_NAME: "{{ include "categraf.fullname" . }}"
+  CATEGRAF_KSM_STATEFULSET_NAME: "{{ include "categraf.resourceName" (dict "root" . "suffix" "ksm") }}"
+  CATEGRAF_OPERATOR_DEPLOYMENT_NAME: "{{ include "categraf.resourceName" (dict "root" . "suffix" "operator") }}"
+{{- if .Values.operator.userToken }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-secret") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+stringData:
+  user-token: "{{ .Values.operator.userToken }}"
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    app: categraf
+    component: operator
+    {{- include "categraf.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: categraf
+      component: operator
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: categraf
+        component: operator
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include "categraf.valuesChecksum" . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator") }}
+      containers:
+      - name: operator
+        image: "{{ .Values.operator.image }}"
+        imagePullPolicy: {{ .Values.operator.pullPolicy }}
+        args:
+        - --leader-elect={{ .Values.operator.leaderElect }}
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-config") }}
+        env:
+        - name: FLASHCAT_USER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator-secret") }}
+              key: user-token
+              optional: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          {{- toYaml .Values.operator.resources | nindent 10 }}
+{{- end }}

@@ -1,0 +1,271 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mock-otel-config
+  namespace: demo
+data:
+  # OTel 配置统一由 Instrumentation 管理，这里只保留业务配置
+  DB_URL: jdbc:mysql://mysql:3306/order_fulfillment?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+  DB_USER: mockotel
+  DB_PASSWORD: mockotel_pwd
+  SPRING_SQL_INIT_MODE: always
+  INSERT_URL: http://test-insert:8081/api/orders
+  QUERY_URL: http://test-query:8082/api/orders
+  QUERY_HEALTH_URL: http://test-query:8082/api/health
+  GATEWAY_FLOW_URL: http://test-gateway:8080/api/gateway/flow
+  GATEWAY_DELAY_MS: "5000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root_pwd
+            - name: MYSQL_DATABASE
+              value: order_fulfillment
+            - name: MYSQL_USER
+              value: mockotel
+            - name: MYSQL_PASSWORD
+              value: mockotel_pwd
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: demo
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-gateway
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-gateway
+  template:
+    metadata:
+      labels:
+        app: test-gateway
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "opentelemetry-operator-system/instrumentation-sample"
+    spec:
+      containers:
+        - name: test-gateway
+          image: mock-otel-sample:0.0.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: mock-otel-config
+          env:
+            # 镜像需内置 /jmx/jmx_prometheus_javaagent.jar 和 /jmx/config.yaml
+            - name: JAVA_TOOL_OPTIONS
+              value: "-javaagent:/jmx/jmx_prometheus_javaagent.jar=8089:/jmx/config.yaml"
+            - name: OTEL_SERVICE_NAME
+              value: test-gateway
+            - name: OTEL_METRICS_EXPORTER
+              value: otlp
+            - name: SERVICE_NAME
+              value: test-gateway
+            - name: SERVER_PORT
+              value: "8080"
+            - name: LOG_FILE
+              value: /tmp/test-gateway.log
+            - name: LOG_FILE_PATTERN
+              value: /tmp/test-gateway.%d{yyyy-MM-dd}.%i.log.gz
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=demo,service.namespace=java-sample,service.role=scheduler
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-gateway
+  namespace: demo
+spec:
+  selector:
+    app: test-gateway
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-insert
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-insert
+  template:
+    metadata:
+      labels:
+        app: test-insert
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "opentelemetry-operator-system/instrumentation-sample"
+    spec:
+      containers:
+        - name: test-insert
+          image: mock-otel-sample:0.0.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: mock-otel-config
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: test-insert
+            - name: OTEL_METRICS_EXPORTER
+              value: otlp
+            - name: SERVICE_NAME
+              value: test-insert
+            - name: SERVER_PORT
+              value: "8081"
+            - name: LOG_FILE
+              value: /tmp/test-insert.log
+            - name: LOG_FILE_PATTERN
+              value: /tmp/test-insert.%d{yyyy-MM-dd}.%i.log.gz
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=demo,service.namespace=java-sample,service.role=database-writer
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-insert
+  namespace: demo
+spec:
+  selector:
+    app: test-insert
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-query
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-query
+  template:
+    metadata:
+      labels:
+        app: test-query
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "opentelemetry-operator-system/instrumentation-sample"
+    spec:
+      containers:
+        - name: test-query
+          image: mock-otel-sample:0.0.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: mock-otel-config
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: test-query
+            - name: OTEL_METRICS_EXPORTER
+              value: otlp
+            - name: SERVICE_NAME
+              value: test-query
+            - name: SERVER_PORT
+              value: "8082"
+            - name: LOG_FILE
+              value: /tmp/test-query.log
+            - name: LOG_FILE_PATTERN
+              value: /tmp/test-query.%d{yyyy-MM-dd}.%i.log.gz
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=demo,service.namespace=java-sample,service.role=database-reader
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-query
+  namespace: demo
+spec:
+  selector:
+    app: test-query
+  ports:
+    - port: 8082
+      targetPort: 8082

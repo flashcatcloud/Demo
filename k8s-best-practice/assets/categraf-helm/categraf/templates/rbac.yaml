@@ -1,0 +1,48 @@
+{{- if or .Values.nodeCategraf.enabled .Values.ksmCategraf.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "categraf.clusterResourceName" (dict "root" . "suffix" "node-agent") }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/metrics
+  - nodes/stats
+  - nodes/proxy
+  - services
+  - endpoints
+  - pods
+  verbs: [get, list, watch]
+- apiGroups: [extensions, networking.k8s.io]
+  resources: [ingresses]
+  verbs: [get, list, watch]
+- nonResourceURLs: [/metrics, /metrics/cadvisor]
+  verbs: [get]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "categraf.fullname" . }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "categraf.clusterResourceName" (dict "root" . "suffix" "node-agent") }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "categraf.clusterResourceName" (dict "root" . "suffix" "node-agent") }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "categraf.fullname" . }}
+  namespace: {{ include "categraf.namespace" . }}
+{{- end }}

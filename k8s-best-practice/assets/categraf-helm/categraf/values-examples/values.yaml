@@ -1,0 +1,91 @@
+# =============================================================================
+# K8S 指标监控采集配置（精简版）
+# 只保留最常用配置；其余全部沿用 chart 默认值。
+# 需要逐项微调（镜像、资源、operator 行为、hostNative 各插件、K8s 组件等）时，
+# 请参考同目录完整注释版：values-examples/values.all.yaml
+# 用法：
+#   cp categraf/values-examples/values.yaml my-values.yaml
+#   vim my-values.yaml                       # 填写下方「基础配置」必填项
+#   helm upgrade --install categraf ./categraf -n flashcat --create-namespace -f my-values.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 基础配置（部署前必改）
+# -----------------------------------------------------------------------------
+categraf:
+  serverAddr: "http://10.99.1.11:19000"   # 必填：Flashcat / Nightingale 服务端地址
+  clusterName: "Kubernetes-cluster"       # 必填：同一 Flashcat 下必须全局唯一；多 Release 并存时每个 Release 使用不同值
+  # heartbeatGid: ""                      # 可选：业务组 GID，设备自动归入该业务组
+  # env: "test"                           # 可选：环境标签，如 prod / test
+
+# -----------------------------------------------------------------------------
+# 节点清理 Operator（卸载/删除节点后自动清理 Flashcat 设备）
+# -----------------------------------------------------------------------------
+operator:
+  enabled: true
+  # 镜像地址（内网/离线部署时改为你的镜像仓库）
+  image: registry.flashcat.cloud/public/categraf-operator:0.0.7
+  userToken: ""                           # enabled=true 时必填：Flashcat API Token
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # 卸载 chart 时清理 Flashcat 设备（默认开启；需要保留设备时改为 false）
+  cleanup:
+    nodeCategraf: true
+    ksmCategraf: true
+
+# -----------------------------------------------------------------------------
+# 节点级采集（Node Agent，DaemonSet，每节点一个）
+# 主机插件 cpu/mem/disk/net/system/diskio/netstat/kernel/swap/process 默认全开，
+# 需要单独开关时见完整版。
+# -----------------------------------------------------------------------------
+nodeCategraf:
+  enabled: true
+  # 镜像地址（内网/离线部署时改为你的镜像仓库）
+  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.32
+  # 上报 ident：nodeName = K8s 节点名（默认，推荐）
+  #   如需 servicemap 采集，请保持 hostname: nodeName（ident 必须为节点名，勿加集群前缀）
+  #   多集群共享同一 Flashcat 且不需要 servicemap 时，可改为 "${cluster}-${nodeName}" 避免同名冲突
+  # hostname: nodeName
+
+# -----------------------------------------------------------------------------
+# 集群级采集（KSM Agent，StatefulSet）
+# -----------------------------------------------------------------------------
+ksmCategraf:
+  enabled: true
+  # 镜像地址（内网/离线部署时改为你的镜像仓库）
+  image: registry.flashcat.cloud/public/categraf_ent:v0.5.32
+  jobs:
+    kubeStateMetrics: true
+
+kubeStateMetrics:
+  enabled: true
+  # 镜像地址（内网/离线部署时改为你的镜像仓库）
+  image: registry.flashcat.cloud/public/kube-state-metrics/kube-state-metrics:v2.19.1
+
+# 应用指标自动发现（抓取打了 metrics-scrape: "true" 标签的 Pod）
+appMetrics:
+  enabled: true
+
+# -----------------------------------------------------------------------------
+# K8s 组件采集（精简版默认关闭；chart 自带默认 coreDns/networkPlugin/kubeProxy 是开的，
+# 这里显式关掉保持最小采集，需要哪个改哪个为 true）
+# -----------------------------------------------------------------------------
+kubeProxy:
+  enabled: false
+
+coreDns:
+  enabled: false
+
+networkPlugin:
+  calico:
+    enabled: false
+  cilium:
+    enabled: false
+
+controlPlane:
+  enabled: false

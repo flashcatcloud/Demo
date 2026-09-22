@@ -1,0 +1,2 @@
+# macOS Finder 元数据：打包时排除，避免进入 chart tgz
+.DS_Store

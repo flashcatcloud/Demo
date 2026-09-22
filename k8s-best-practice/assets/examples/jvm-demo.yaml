@@ -1,0 +1,344 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+# JMX Exporter 配置，用于暴露 JVM 指标
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jmx-exporter-config
+  namespace: demo
+data:
+  config.yaml: |
+    lowercaseOutputName: true
+    lowercaseOutputLabelNames: true
+    rules:
+      - pattern: 'java.lang<type=Memory><HeapMemoryUsage>used'
+        name: jvm_memory_heap_bytes_used
+      - pattern: 'java.lang<type=Memory><NonHeapMemoryUsage>used'
+        name: jvm_memory_nonheap_bytes_used
+      - pattern: 'java.lang<type=Threading><ThreadCount>'
+        name: jvm_threads_count
+      - pattern: 'java.lang<type=GarbageCollector,name=(.*)><CollectionTime>'
+        name: jvm_gc_collection_seconds
+        labels:
+          gc: "$1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mock-app-config
+  namespace: demo
+data:
+  DB_URL: jdbc:mysql://mysql:3306/order_fulfillment?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+  DB_USER: mockotel
+  DB_PASSWORD: mockotel_pwd
+  SPRING_SQL_INIT_MODE: always
+  INSERT_URL: http://test-insert:8081/api/orders
+  QUERY_URL: http://test-query:8082/api/orders
+  QUERY_HEALTH_URL: http://test-query:8082/api/health
+  GATEWAY_FLOW_URL: http://test-gateway:8080/api/gateway/flow
+  GATEWAY_DELAY_MS: "5000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root_pwd
+            - name: MYSQL_DATABASE
+              value: order_fulfillment
+            - name: MYSQL_USER
+              value: mockotel
+            - name: MYSQL_PASSWORD
+              value: mockotel_pwd
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: demo
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-gateway
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-gateway
+  template:
+    metadata:
+      labels:
+        app: test-gateway
+        # KSM Agent 自动发现标签
+        metrics-scrape: "true"
+        metrics-port: "8089"
+      annotations:
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: test-gateway
+          image: mock-otel-sample:0.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+            - containerPort: 8089
+              name: metrics
+          envFrom:
+            - configMapRef:
+                name: mock-app-config
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-javaagent:/jmx/jmx_prometheus_javaagent.jar=8089:/jmx/config.yaml"
+            - name: SERVICE_NAME
+              value: test-gateway
+            - name: SERVER_PORT
+              value: "8080"
+            - name: LOG_FILE
+              value: /tmp/test-gateway.log
+            - name: LOG_FILE_PATTERN
+              value: /tmp/test-gateway.%d{yyyy-MM-dd}.%i.log.gz
+          volumeMounts:
+            - name: jmx-agent
+              mountPath: /jmx/jmx_prometheus_javaagent.jar
+            - name: jmx-config
+              mountPath: /jmx/config.yaml
+              subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - name: jmx-agent
+          hostPath:
+            path: /opt/jmx/jmx_prometheus_javaagent.jar
+            type: File
+        - name: jmx-config
+          configMap:
+            name: jmx-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-gateway
+  namespace: demo
+spec:
+  selector:
+    app: test-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 8089
+      targetPort: 8089
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-insert
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-insert
+  template:
+    metadata:
+      labels:
+        app: test-insert
+        metrics-scrape: "true"
+        metrics-port: "8089"
+      annotations:
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: test-insert
+          image: mock-otel-sample:0.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+            - containerPort: 8089
+              name: metrics
+          envFrom:
+            - configMapRef:
+                name: mock-app-config
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-javaagent:/jmx/jmx_prometheus_javaagent.jar=8089:/jmx/config.yaml"
+            - name: SERVICE_NAME
+              value: test-insert
+            - name: SERVER_PORT
+              value: "8081"
+            - name: LOG_FILE
+              value: /tmp/test-insert.log
+            - name: LOG_FILE_PATTERN
+              value: /tmp/test-insert.%d{yyyy-MM-dd}.%i.log.gz
+          volumeMounts:
+            - name: jmx-agent
+              mountPath: /jmx/jmx_prometheus_javaagent.jar
+            - name: jmx-config
+              mountPath: /jmx/config.yaml
+              subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - name: jmx-agent
+          hostPath:
+            path: /opt/jmx/jmx_prometheus_javaagent.jar
+            type: File
+        - name: jmx-config
+          configMap:
+            name: jmx-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-insert
+  namespace: demo
+spec:
+  selector:
+    app: test-insert
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081
+    - name: metrics
+      port: 8089
+      targetPort: 8089
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-query
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-query
+  template:
+    metadata:
+      labels:
+        app: test-query
+        metrics-scrape: "true"
+        metrics-port: "8089"
+      annotations:
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: test-query
+          image: mock-otel-sample:0.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+            - containerPort: 8089
+              name: metrics
+          envFrom:
+            - configMapRef:
+                name: mock-app-config
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-javaagent:/jmx/jmx_prometheus_javaagent.jar=8089:/jmx/config.yaml"
+            - name: SERVICE_NAME
+              value: test-query
+            - name: SERVER_PORT
+              value: "8082"
+            - name: LOG_FILE
+              value: /tmp/test-query.log
+            - name: LOG_FILE_PATTERN
+              value: /tmp/test-query.%d{yyyy-MM-dd}.%i.log.gz
+          volumeMounts:
+            - name: jmx-agent
+              mountPath: /jmx/jmx_prometheus_javaagent.jar
+            - name: jmx-config
+              mountPath: /jmx/config.yaml
+              subPath: config.yaml
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - name: jmx-agent
+          hostPath:
+            path: /opt/jmx/jmx_prometheus_javaagent.jar
+            type: File
+        - name: jmx-config
+          configMap:
+            name: jmx-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-query
+  namespace: demo
+spec:
+  selector:
+    app: test-query
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+    - name: metrics
+      port: 8089
+      targetPort: 8089

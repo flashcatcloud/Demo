@@ -1,0 +1,186 @@
+# =============================================================================
+# Categraf Monitor — 全局配置
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Categraf 通用配置
+# ---------------------------------------------------------------------------
+categraf:
+  # --- 服务端地址（Flashcat / Nightingale）---
+  serverAddr: "http://10.99.1.11:19000"
+
+  # --- 心跳分组 GID（可选）---
+  heartbeatGid: ""
+
+  # --- 集群名称（同一 Flashcat 下必须全局唯一；多 Release 并存时每个 Release 必须使用不同值）---
+  clusterName: "Kubernetes-cluster"
+
+  # --- 环境标签 ---
+  env: "test"
+
+  # --- Prometheus 远程写入认证 ---
+  remoteWriteUser: "user001"
+  remoteWritePassword: ""
+
+# ---------------------------------------------------------------------------
+# Operator — 清理 K8s 节点删除后 Flashcat 上残留的 categraf 设备
+# 默认启用；不需要清理时改为 false。enabled=true 时 userToken 必填（为空会报错）
+# ---------------------------------------------------------------------------
+operator:
+  enabled: true
+  image: registry.flashcat.cloud/public/categraf-operator:0.0.7
+  pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  env:
+    defaultWaitDuration: "4h"
+    heartbeatInterval: "10s"
+    heartbeatStopFactor: "3"
+    reconcileInterval: "5m"
+    maxNodeStaleDuration: "168h"
+    flashcatAddr: ""
+  userToken: ""
+  leaderElect: true
+  # 卸载 chart 时清理 Flashcat 资源的开关（默认开启；需要保留设备时改为 false）
+  cleanup:
+    # 删除该集群的 nodeCategraf 设备（nodeAgent targets，DaemonSet 部署）
+    nodeCategraf: true
+    # 删除该集群的 ksmCategraf 设备（ksmAgent targets，StatefulSet 部署）
+    ksmCategraf: true
+
+# ---------------------------------------------------------------------------
+# Kube-State-Metrics 服务
+# ---------------------------------------------------------------------------
+kubeStateMetrics:
+  enabled: true
+  image: registry.flashcat.cloud/public/kube-state-metrics/kube-state-metrics:v2.19.1
+  pullPolicy: IfNotPresent
+  replicas: 1
+  # 资源参考：中型集群（50~200 节点）默认值，大集群请调大
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# ---------------------------------------------------------------------------
+# KSM 采集 Agent（StatefulSet）
+# ---------------------------------------------------------------------------
+ksmCategraf:
+  enabled: true
+  image: registry.flashcat.cloud/public/categraf_ent:v0.5.32
+  pullPolicy: IfNotPresent
+  replicas: 1
+  # 资源参考：中型集群（50~200 节点）默认值，大集群请调大
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1.5Gi
+  # KSM Agent 各采集任务开关
+  jobs:
+    # K8s 对象状态指标（Pod/Node/Deployment/Service 等）
+    kubeStateMetrics: true
+
+# ---------------------------------------------------------------------------
+# Node 采集 Agent（DaemonSet）
+# ---------------------------------------------------------------------------
+nodeCategraf:
+  enabled: true
+  # DaemonSet 名称由 Release 决定（<release>），并自动同步给 operator
+  # 上报标识(ident)：nodeName = K8s 节点名（默认，推荐；如需 servicemap 采集请保持此项，ident 必须为节点名）
+  #   hostname = 宿主机 hostname；
+  #   或自定义模板，如 "${cluster}-$hostname"（支持 ${cluster} ${nodeName} $hostname $ip；servicemap 场景勿加前缀）
+  hostname: nodeName
+  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.32
+  pullPolicy: IfNotPresent
+  # 资源参考：中型集群重节点默认值，按节点容器数调整
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  # 容器权限（一般保持默认即可）
+  #   privileged: true（默认，推荐）= 功能全：能采集指标/读宿主文件，也能以宿主机视角执行诊断命令（命令通道全能力）
+  #   privileged: false            = 功能受限：只能“看”（指标/日志/dmesg），不能以宿主机视角执行命令、不能修改宿主机；
+  #                                  servicemap 自动降级为轮询模式（无 L7 解析），需要完整服务地图请保持 true
+  securityContext:
+    privileged: true
+  # host-exec 命令通道（FlashAI 下发脚本进入宿主机执行；默认开启）
+  #   开启时自动：privileged=true + CATEGRAF_HOST_EXEC_PROFILE=true + 挂载 /var/lib/categraf/ibex
+  #   不需要时改为 false（env=false、不挂 ibex）
+  hostExec:
+    enabled: true
+  # Node Agent 各采集任务开关
+  inputs:
+    # kubelet cAdvisor 容器指标 + kubelet 自身指标
+    cadvisor: true
+    # 主机基础指标（node_exporter 插件）
+    nodeExporter: true
+    # 原生主机监控插件（Nightingale 风格指标，Flashcat 主机大盘默认匹配）
+    hostNative:
+      # 总开关：false 关闭全部；true 时按下面单个开关控制
+      enabled: true
+      # cpu / mem / disk / net / system / diskio / netstat / kernel / swap / process 默认全开，按需改 false 关闭
+      cpu: true
+      mem: true
+      disk: true
+      net: true
+      system: true
+      diskio: true
+      netstat: true
+      kernel: true
+      swap: true
+      process: true
+  tolerations:
+    - effect: NoSchedule
+      operator: Exists
+
+# ---------------------------------------------------------------------------
+# 应用指标采集（K8s SD 自动发现）
+# 自动发现打了 metrics-scrape: "true" 标签的 Pod
+# ---------------------------------------------------------------------------
+appMetrics:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# 控制平面组件采集（K8s SD 自动发现，仅适用于 kubeadm Static Pod 集群）
+# 二进制 systemd 部署请使用 Node Agent 远程下发
+# 注意：controller/scheduler 需要 --bind-address=0.0.0.0
+#       etcd 需要 --listen-metrics-urls 包含 0.0.0.0:2381
+# ---------------------------------------------------------------------------
+controlPlane:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# CoreDNS 指标采集（K8s SD 自动发现）
+# ---------------------------------------------------------------------------
+coreDns:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# 网络插件指标采集（K8s SD 自动发现）
+# ---------------------------------------------------------------------------
+networkPlugin:
+  calico:
+    enabled: true
+  cilium:
+    enabled: true
+
+# ---------------------------------------------------------------------------
+# kube-proxy 指标采集（Node Agent 远程下发）
+# kube-proxy 仅监听 127.0.0.1:10249，无法跨节点访问，需通过 Node Agent 采集
+# ---------------------------------------------------------------------------
+kubeProxy:
+  enabled: true

@@ -1,0 +1,247 @@
+{{- if .Values.ksmCategraf.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "ksm-config") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    [global]
+    interval = 15
+    providers = ["local"]
+    hostname = "${CLUSTER_NAME}-${HOSTNAME}"
+    [global.labels]
+    env = "{{ .Values.categraf.env }}"
+    cluster = "{{ .Values.categraf.clusterName }}"
+    categraf = "ksmAgent"
+    [global.n9e_server]
+    address="{{ include "categraf.serverAddr" . }}"
+    [writer_opt]
+    batch = 1000
+    chan_size = 1000000
+    [heartbeat]
+    enable = true
+    url = "{{ include "categraf.heartbeatURL" . }}"
+    interval = 10
+    timeout = 5000
+    dial_timeout = 2500
+    [prometheus]
+    enable = true
+    scrape_config_file = "/etc/categraf/cluster-scrape.yaml"
+    log_level = "info"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "ksm-scrape") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  cluster-scrape.yaml: |
+    global:
+      scrape_interval: 15s
+      external_labels:
+        cluster: "{{ .Values.categraf.clusterName }}"
+    scrape_configs:
+      {{- if .Values.ksmCategraf.jobs.kubeStateMetrics }}
+      - job_name: 'kube-state-metrics'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: {{ include "categraf.namespace" . }};{{ include "categraf.resourceName" (dict "root" . "suffix" "kube-state-metrics") }};http-metrics
+      {{- end }}
+      {{- if .Values.appMetrics.enabled }}
+      - job_name: 'app-metrics'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_metrics_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__address__, __meta_kubernetes_pod_label_metrics_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            target_label: __metrics_path__
+            regex: ^(.+)$
+            replacement: $1
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: service
+          - source_labels: [__meta_kubernetes_pod_label_team]
+            target_label: team
+     {{- end }}
+      {{- if .Values.controlPlane.enabled }}
+      - job_name: 'apiserver'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        authorization:
+          type: Bearer
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+      - job_name: 'kube-controller-manager'
+        kubernetes_sd_configs:
+          - role: pod
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        authorization:
+          type: Bearer
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_component]
+            action: keep
+            regex: kube-system;kube-controller-manager
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:10257
+
+      - job_name: 'kube-scheduler'
+        kubernetes_sd_configs:
+          - role: pod
+        scheme: https
+        tls_config:
+          insecure_skip_verify: true
+        authorization:
+          type: Bearer
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_component]
+            action: keep
+            regex: kube-system;kube-scheduler
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:10259
+
+      - job_name: 'etcd'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_component]
+            action: keep
+            regex: kube-system;etcd
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:2381
+      {{- end }}
+      {{- if .Values.coreDns.enabled }}
+      - job_name: 'coredns'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: kube-system;(coredns|kube-dns);metrics
+      {{- end }}
+      {{- if .Values.networkPlugin.calico.enabled }}
+      - job_name: 'calico'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_k8s_app]
+            action: keep
+            regex: kube-system;calico-node
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:9091
+      {{- end }}
+      {{- if .Values.networkPlugin.cilium.enabled }}
+      - job_name: 'cilium'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: kube-system;cilium
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:9090
+      {{- end }}
+    remote_write:
+      - url: '{{ include "categraf.remoteWriteURL" . }}'
+        basic_auth:
+          username: "{{ .Values.categraf.remoteWriteUser }}"
+          password: "{{ .Values.categraf.remoteWritePassword }}"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "ksm") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    app: n9e
+    component: categraf-ksm
+    {{- include "categraf.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ksmCategraf.replicas }}
+  serviceName: {{ include "categraf.resourceName" (dict "root" . "suffix" "ksm") }}
+  selector:
+    matchLabels:
+      app: n9e
+      component: categraf-ksm
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: n9e
+        component: categraf-ksm
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include "categraf.valuesChecksum" . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "categraf.fullname" . }}
+      containers:
+        - image: "{{ .Values.ksmCategraf.image }}"
+          imagePullPolicy: {{ .Values.ksmCategraf.pullPolicy }}
+          name: categraf
+          env:
+            - name: CLUSTER_NAME
+              value: "{{ .Values.categraf.clusterName }}"
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command: ["/usr/bin/categraf"]
+          args: ["-configs", "/opt/categraf/conf"]
+          resources:
+            {{- toYaml .Values.ksmCategraf.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /opt/categraf/conf/config.toml
+              name: categraf-config
+              subPath: config.toml
+            - mountPath: /etc/categraf/cluster-scrape.yaml
+              name: cluster-scrape-config
+              subPath: cluster-scrape.yaml
+            - mountPath: /opt/categraf/prometheus-wal
+              name: prometheus-wal
+      volumes:
+        - configMap:
+            name: {{ include "categraf.resourceName" (dict "root" . "suffix" "ksm-config") }}
+          name: categraf-config
+        - configMap:
+            name: {{ include "categraf.resourceName" (dict "root" . "suffix" "ksm-scrape") }}
+          name: cluster-scrape-config
+        - emptyDir: {}
+          name: prometheus-wal
+{{- end }}

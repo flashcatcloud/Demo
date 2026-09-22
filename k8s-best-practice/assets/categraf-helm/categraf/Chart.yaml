@@ -1,0 +1,17 @@
+apiVersion: v2
+name: categraf
+description: K8S 指标监控采集 —— 基于 Categraf (DaemonSet + StatefulSet) 与 kube-state-metrics
+type: application
+version: 0.2.1
+appVersion: "1.0.0"
+kubeVersion: ">=1.21.0-0 <1.32.0-0"
+keywords:
+  - categraf
+  - nightingale
+  - flashcat
+  - kube-state-metrics
+  - monitoring
+home: https://flashcat.cloud/
+maintainers:
+  - name: Flashcat
+    url: https://flashcat.cloud/

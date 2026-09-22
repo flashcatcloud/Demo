@@ -1,0 +1,339 @@
+{{- if .Values.nodeCategraf.enabled }}
+{{- $hname := default "nodeName" .Values.nodeCategraf.hostname }}
+{{- $hostnameExpr := $hname }}
+{{- if eq $hname "nodeName" }}
+{{- $hostnameExpr = "${HOSTNAME}" }}
+{{- else if eq $hname "hostname" }}
+{{- $hostnameExpr = "$hostname" }}
+{{- else }}
+{{- $hostnameExpr = replace "${hostname}" "$hostname" $hostnameExpr }}
+{{- $hostnameExpr = replace "${ip}" "$ip" $hostnameExpr }}
+{{- $hostnameExpr = replace "${cluster}" "${CLUSTER_NAME}" $hostnameExpr }}
+{{- $hostnameExpr = replace "${nodeName}" "${HOSTNAME}" $hostnameExpr }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "config") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    [global]
+    print_configs = false
+    hostname = "{{ $hostnameExpr }}"
+    omit_hostname = false
+    precision = "ms"
+    interval = 15
+    providers = ["local", "http", "rmq"]
+    [global.labels]
+    env = "{{ .Values.categraf.env }}"
+    cluster = "{{ .Values.categraf.clusterName }}"
+    categraf = "nodeAgent"
+    [global.n9e_server]
+    address="{{ include "categraf.serverAddr" . }}"
+    [writer_opt]
+    batch = 2000
+    chan_size = 1000000
+    [heartbeat]
+    enable = true
+    url = "{{ include "categraf.heartbeatURL" . }}"
+    interval = 10
+    timeout = 5000
+    dial_timeout = 2500
+---
+{{- if .Values.nodeCategraf.inputs.cadvisor }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "input-cadvisor") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  cadvisor.toml: |
+    interval = 15
+    [[instances]]
+    urls = ["https://127.0.0.1:10250/metrics/cadvisor"]
+    bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    use_tls = true
+    insecure_skip_verify = true
+    labels = { job = "kubelet", component = "cadvisor" }
+    [[instances]]
+    urls = ["https://127.0.0.1:10250/metrics"]
+    bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    use_tls = true
+    insecure_skip_verify = true
+    labels = { job = "kubelet", component = "kubelet-metrics" }
+---
+{{- end }}
+{{- if .Values.kubeProxy.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "input-kube-proxy") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  kube-proxy.toml: |
+    interval = 15
+    [[instances]]
+    urls = ["http://127.0.0.1:10249/metrics"]
+    use_tls = false
+    labels = { job = "kube-proxy" }
+---
+{{- end }}
+{{- if .Values.nodeCategraf.inputs.nodeExporter }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "input-node-exporter") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data:
+  exporter.toml: |
+    interval = 15
+    collectors = [
+        "--path.procfs=/hostfs/proc",
+        "--path.sysfs=/hostfs/sys",
+        "--path.rootfs=/hostfs",
+        "--collector.cpu",
+        "--collector.cpufreq",
+        "--collector.meminfo",
+        "--collector.diskstats",
+        "--collector.filesystem",
+        "--collector.netdev",
+        "--collector.netstat",
+        "--collector.loadavg",
+        "--collector.stat",
+        "--collector.vmstat",
+        "--collector.uname",
+        "--collector.time",
+        "--collector.timex",
+        "--collector.entropy",
+        "--collector.edac",
+        "--collector.hwmon",
+        "--collector.mdadm",
+        "--collector.pressure",
+        "--collector.processes",
+        "--collector.schedstat",
+        "--collector.selinux",
+        "--collector.sockstat",
+        "--collector.softnet",
+        "--collector.udp_queues",
+        "--collector.xfs",
+    ]
+    [[relabel_configs]]
+    source_labels = ["agent_hostname"]
+    target_label = "instance"
+    action = "replace"
+---
+{{- end }}
+{{- $hostPlugins := list "cpu" "mem" "disk" "diskio" "net" "netstat" "system" "kernel" "swap" "process" }}
+{{- range $name := $hostPlugins }}
+{{- $pluginDir := $name }}
+{{- if eq $name "process" }}{{- $pluginDir = "processes" }}{{- end }}
+{{- if and $.Values.nodeCategraf.inputs.hostNative.enabled (index $.Values.nodeCategraf.inputs.hostNative $name) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" $ "suffix" (printf "input-%s" $name)) }}
+  namespace: {{ include "categraf.namespace" $ }}
+  labels:
+    {{- include "categraf.labels" $ | nindent 4 }}
+data:
+  {{ $pluginDir }}.toml: |
+    interval = 15
+{{- if ne $name "process" }}
+
+    [[instances]]
+{{- end }}
+---
+{{- end }}
+{{- end }}
+# 原生主机插件关闭时用空目录覆盖镜像默认配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "disable-host") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data: {}
+---
+# 禁用镜像默认的 input.syslog 插件，避免容器内 tail 系统日志文件失败
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "categraf.resourceName" (dict "root" . "suffix" "disable-syslog") }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    {{- include "categraf.labels" . | nindent 4 }}
+data: {}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "categraf.fullname" . }}
+  namespace: {{ include "categraf.namespace" . }}
+  labels:
+    app: n9e
+    component: categraf
+    {{- include "categraf.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: n9e
+      component: categraf
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: n9e
+        component: categraf
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include "categraf.valuesChecksum" . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "categraf.fullname" . }}
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        {{- toYaml .Values.nodeCategraf.tolerations | nindent 8 }}
+      containers:
+      - name: categraf
+        image: "{{ .Values.nodeCategraf.image }}"
+        imagePullPolicy: {{ .Values.nodeCategraf.pullPolicy }}
+        command: ["/usr/bin/categraf"]
+        args: ["-configs", "/opt/categraf/conf"]
+        {{- $hostExecEnabled := default false (get (default dict .Values.nodeCategraf.hostExec) "enabled") }}
+        {{- $ctx := default dict .Values.nodeCategraf.securityContext }}
+        {{- $eff := deepCopy $ctx }}
+        {{- $profile := "false" }}
+        {{- if $hostExecEnabled }}
+        {{-   $profile = "true" }}
+        {{-   $_ := set $eff "privileged" true }}
+        {{-   if hasKey $eff "allowPrivilegeEscalation" }}{{- $_ := unset $eff "allowPrivilegeEscalation" }}{{- end }}
+        {{-   if hasKey $eff "capabilities" }}{{- $_ := unset $eff "capabilities" }}{{- end }}
+        {{- else if eq (get $eff "privileged") false }}
+        {{-   if not (hasKey $eff "allowPrivilegeEscalation") }}{{- $_ := set $eff "allowPrivilegeEscalation" false }}{{- end }}
+        {{-   if not (hasKey $eff "capabilities") }}{{- $_ := set $eff "capabilities" (dict "drop" (list "ALL") "add" (list "SYSLOG")) }}{{- end }}
+        {{- end }}
+        securityContext:
+          {{- toYaml $eff | nindent 10 }}
+        resources:
+          {{- toYaml .Values.nodeCategraf.resources | nindent 10 }}
+        env:
+        - name: TZ
+          value: Asia/Shanghai
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: HOSTIP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: CLUSTER_NAME
+          value: "{{ .Values.categraf.clusterName }}"
+        - name: HOST_PROC
+          value: /hostfs/proc
+        - name: HOST_SYS
+          value: /hostfs/sys
+        - name: HOST_MOUNT_PREFIX
+          value: /hostfs
+        - name: CATEGRAF_HOST_EXEC_PROFILE
+          value: "{{ $profile }}"
+        volumeMounts:
+        - mountPath: /opt/categraf/conf/config.toml
+          name: categraf-config
+          subPath: config.toml
+        {{- if .Values.nodeCategraf.inputs.cadvisor }}
+        - mountPath: /opt/categraf/conf/input.prometheus/cadvisor.toml
+          name: categraf-input-cadvisor
+          subPath: cadvisor.toml
+        {{- end }}
+        {{- if .Values.nodeCategraf.inputs.nodeExporter }}
+        - mountPath: /opt/categraf/conf/input.node_exporter
+          name: categraf-input-node-exporter
+        {{- end }}
+        {{- if .Values.kubeProxy.enabled }}
+        - mountPath: /opt/categraf/conf/input.prometheus/kube-proxy.toml
+          name: categraf-input-kube-proxy
+          subPath: kube-proxy.toml
+        {{- end }}
+        {{- range $name := $hostPlugins }}
+        {{- $pluginDir := $name }}
+        {{- if eq $name "process" }}{{- $pluginDir = "processes" }}{{- end }}
+        {{- if and $.Values.nodeCategraf.inputs.hostNative.enabled (index $.Values.nodeCategraf.inputs.hostNative $name) }}
+        - mountPath: /opt/categraf/conf/input.{{ $pluginDir }}/{{ $pluginDir }}.toml
+          name: categraf-input-{{ $name }}
+          subPath: {{ $pluginDir }}.toml
+        {{- else }}
+        - mountPath: /opt/categraf/conf/input.{{ $pluginDir }}
+          name: categraf-disable-host
+        {{- end }}
+        {{- end }}
+        - mountPath: /opt/categraf/conf/input.syslog
+          name: categraf-disable-syslog
+        {{- if $hostExecEnabled }}
+        - mountPath: /var/lib/categraf/ibex
+          name: ibex-host-meta
+        {{- end }}
+        - mountPath: /var/run/utmp
+          name: hostroutmp
+          readOnly: true
+        - mountPath: /hostfs
+          name: hostrofs
+          readOnly: true
+          mountPropagation: HostToContainer
+      volumes:
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" . "suffix" "config") }}
+        name: categraf-config
+      {{- if .Values.nodeCategraf.inputs.cadvisor }}
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" . "suffix" "input-cadvisor") }}
+        name: categraf-input-cadvisor
+      {{- end }}
+      {{- if .Values.nodeCategraf.inputs.nodeExporter }}
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" . "suffix" "input-node-exporter") }}
+        name: categraf-input-node-exporter
+      {{- end }}
+      {{- if .Values.kubeProxy.enabled }}
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" . "suffix" "input-kube-proxy") }}
+        name: categraf-input-kube-proxy
+      {{- end }}
+      {{- range $name := $hostPlugins }}
+      {{- if and $.Values.nodeCategraf.inputs.hostNative.enabled (index $.Values.nodeCategraf.inputs.hostNative $name) }}
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" $ "suffix" (printf "input-%s" $name)) }}
+        name: categraf-input-{{ $name }}
+      {{- end }}
+      {{- end }}
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" . "suffix" "disable-host") }}
+        name: categraf-disable-host
+      - configMap:
+          name: {{ include "categraf.resourceName" (dict "root" . "suffix" "disable-syslog") }}
+        name: categraf-disable-syslog
+      - hostPath:
+          path: /var/run/utmp
+        name: hostroutmp
+      {{- if $hostExecEnabled }}
+      - hostPath:
+          path: /var/lib/categraf/ibex
+          type: DirectoryOrCreate
+        name: ibex-host-meta
+      {{- end }}
+      - hostPath:
+          path: /
+        name: hostrofs
+{{- end }}

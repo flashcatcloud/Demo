@@ -1,0 +1,33 @@
+# ============================================================
+# 控制平面远程下发配置（kubeadm / 二进制手动部署均适用）
+# 用法：Flashcat 控制台 → 数据集成 → 数据采集 → 新建 Prometheus
+#       采集任务 → 远程下发给 Master 节点的 Node Agent
+# 注意：把每行 labels 里的 cluster 改成你的集群名
+# ============================================================
+interval = 15
+
+[[instances]]
+urls = ["https://127.0.0.1:6443/metrics"]
+bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+use_tls = true
+insecure_skip_verify = true
+labels = { job = "apiserver", cluster = "Kubernetes-cluster" }
+
+[[instances]]
+urls = ["https://127.0.0.1:10257/metrics"]
+bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+use_tls = true
+insecure_skip_verify = true
+labels = { job = "kube-controller-manager", cluster = "Kubernetes-cluster" }
+
+[[instances]]
+urls = ["https://127.0.0.1:10259/metrics"]
+bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+use_tls = true
+insecure_skip_verify = true
+labels = { job = "kube-scheduler", cluster = "Kubernetes-cluster" }
+
+[[instances]]
+urls = ["http://127.0.0.1:2381/metrics"]
+use_tls = false
+labels = { job = "etcd", cluster = "Kubernetes-cluster" }
