@@ -263,11 +263,16 @@
 
         <div class="f">
           <label for="env">环境</label>
-          <select id="env" data-k="env">
+          <select id="env" data-k="envMode">
             <option value="prod" selected>prod</option>
             <option value="test">test</option>
             <option value="dev">dev</option>
+            <option value="custom">自定义…</option>
           </select>
+          <div id="envCustomBox" hidden>
+            <input type="text" data-k="envCustom" placeholder="如 staging / pre-prod" style="margin-top:6px" />
+            <div class="hint">写入指标标签 env，建议只用小写字母、数字和短横线</div>
+          </div>
         </div>
 
         <div class="f">
@@ -612,7 +617,7 @@
     regPrefix: "harbor.internal/flashcat",
     cluster: "prod-k8s-01",
     ns: "flashcat",
-    env: "prod",
+    envMode: "prod", envCustom: "",
     gid: "",
     addr: "http://flashcat.internal:19000",
     interval: "15",
@@ -706,6 +711,11 @@
     ];
   }
 
+  function envValue() {
+    if (S.envMode === "custom") return (S.envCustom || "").trim() || "prod";
+    return S.envMode;
+  }
+
   function valuesYaml() {
     var out = [];
     if (!S.online) out.push("# 离线部署：Chart 与镜像均来自内网");
@@ -713,7 +723,7 @@
     var cat = ["categraf:"];
     cat.push('  serverAddr: "' + S.addr + '"');
     cat.push('  clusterName: "' + S.cluster + '"');
-    cat.push('  env: "' + S.env + '"');
+    cat.push('  env: "' + envValue() + '"');
     if (S.gid.trim()) cat.push('  heartbeatGid: "' + S.gid.trim() + '"');
     cat.push("  config:");
     cat.push("    interval: " + S.interval);
@@ -1083,6 +1093,8 @@
     Array.prototype.forEach.call(document.querySelectorAll("[data-deploy]"), function (b) {
       b.classList.toggle("on", (b.getAttribute("data-deploy") === "online") === S.online);
     });
+    var ecb = document.getElementById("envCustomBox");
+    if (ecb) ecb.hidden = S.envMode !== "custom";
     var hint = document.getElementById("deployHint");
     if (hint) hint.textContent = S.online ? "镜像从 registry.flashcat.cloud 拉取" : "Chart 与镜像均来自内网，无需访问公网";
     syncAdv();
@@ -1153,6 +1165,7 @@
       (S.online || (S.chartPath.trim() && S.regPrefix.trim())) &&
       (!S.opt.operator || S.opToken.trim()) &&
       S.imgVer.trim() &&
+      (S.envMode !== "custom" || S.envCustom.trim()) &&
       (!(S.sts && S.opt.ksm) || S.ksmVer.trim()) &&
       (!S.opt.operator || S.opVer.trim()) &&
       (S.res !== "custom" ||

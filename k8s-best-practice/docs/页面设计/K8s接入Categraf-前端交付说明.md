@@ -47,7 +47,7 @@
   regPrefix: "harbor.internal/flashcat",
   cluster: "prod-k8s-01",
   ns: "flashcat",
-  env: "prod",
+  envMode: "prod", envCustom: "",   // 选「自定义…」时用 envCustom 的值
   gid: "",
   addr: "http://flashcat.internal:19000",
   interval: "15",
@@ -72,7 +72,7 @@
 | ns | input | `flashcat` | ✅ | `helm -n` / `kubectl -n` |
 | addr | input + 清空 | `http://flashcat.internal:19000` | ✅ | `categraf.serverAddr` |
 | gid | input | 空 | — | `categraf.heartbeatGid` |
-| env | select | `prod` | — | `categraf.env` |
+| envMode / envCustom | select + input | `prod` | 选「自定义…」时输入框必填 | `categraf.env` |
 | opToken | input | 空 | Operator 开启时 ✅ | `operator.userToken` |
 | interval | select | `15` | — | `categraf.config.interval` |
 | ds / sts | 两张卡多选 | **都选中** | 至少一个 | `nodeCategraf.enabled` / `ksmCategraf.enabled` |
