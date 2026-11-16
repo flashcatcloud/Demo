@@ -1,0 +1,204 @@
+状态	用例	说明
+PASS	1.1-version	
+PASS	1.1-appVersion	
+PASS	1.1-kubeVersion	
+PASS	1.1-sha256	
+PASS	1.1-无杂项文件	
+PASS	1.3-与0.2.4渲染等价	
+PASS	interval=0	
+PASS	interval=-1	
+PASS	batch=-1	
+PASS	chanSize=0	
+PASS	heartbeat.interval=0	
+PASS	heartbeat.timeout=0	
+PASS	heartbeat.dialTimeout=0	
+PASS	customLabels 覆盖 cluster	
+PASS	customLabels 覆盖 env	
+PASS	customLabels 覆盖 categraf	
+PASS	customLabels 非法键 foo-bar	
+PASS	customLabels 值为 map	
+PASS	operator 无 userToken	
+PASS	extraScrapeConfigs 非 list	
+PASS	batch=0 回落 Node=2000	
+PASS	batch=0 回落 KSM=1000	
+PASS	toggle-默认-DaemonSet	
+PASS	toggle-默认-StatefulSet	
+PASS	toggle-默认-Deployment	
+PASS	toggle-nodeAgent-off-DS	
+PASS	toggle-nodeAgent-off-config	
+PASS	toggle-ksmAgent-off-STS	
+PASS	toggle-ksm-off-appMetrics-job	
+PASS	toggle-ksm-off-coreDns-job	
+PASS	toggle-ksm-metrics-job-off	
+PASS	toggle-ksm-off	
+PASS	toggle-operator-off	
+PASS	toggle-operator-cleanup-hook	
+PASS	toggle-operator-cleanup-off	
+PASS	toggle-appMetrics-off	
+PASS	toggle-coreDns-off	
+PASS	toggle-kubeProxy-off	
+PASS	toggle-networkPlugin-off	
+PASS	toggle-controlPlane-on	
+PASS	toggle-cadvisor-off	
+PASS	toggle-nodeExporter-off	
+PASS	toggle-hostExec-off	
+PASS	镜像-categraf_ent(ksm)	
+PASS	镜像-servicemap(node)	
+PASS	镜像-ksm	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	
+PASS	hostNetwork+hostPID	
+PASS	hostfs 挂载(node agent 容器)	
+PASS	hostfs 宿主根挂载	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	
+PASS	selector 块数量且均含 instance	
+PASS	G2-远端包SHA	
+PASS	G2-卸载后本集群设备数	
+PASS	G2-卸载不影响其它集群设备	
+PASS	G2-卸载后 release 列表为空	
+PASS	3.1-设备数	
+PASS	3.1-全部 target_up=2	
+PASS	3.1-心跳年龄<=60s(age=5s)	
+SUPERSEDED/EXPLAINED	3.1-heartbeatGid=2 生效	3.1-heartbeatGid=2 生效(group_objs)
+PASS	3.1-agent 版本	
+PASS	3.1-customLabels owner 落库	
+PASS	3.1-customLabels environment 落库	
+PASS	3.2-up 全为 1	
+PASS	3.2-series 总量	
+PASS	3.2-node_exporter 节点数	
+PASS	3.2-kube-state-metrics 指标	
+PASS	3.2-app-metrics target up	
+PASS	3.2-cadvisor 容器指标	
+SUPERSEDED/EXPLAINED	3.4-syslog tail 报错已消除	KNOWN-ISSUE F2
+PASS	3.1-心跳年龄<=60s(age=4s)	
+PASS	7.1-README kubeVersion 与 Chart.yaml 一致	
+PASS	7.4-文档拉包版本=生产 0.2.1	
+PASS	7.4-文档 kubeVersion 与 Chart 一致	
+PASS	7.4-仓库存在 0.2.1	
+PASS	7.6-记录文件名符合命名规则	
+PASS	C1-config region	
+PASS	C1-scrape region	
+PASS	C1-metrics region 标签	
+PASS	C1-设备 tags region	
+PASS	C1-恢复后无 region	
+PASS	C2-interval=25	
+PASS	C2-batch=4000	
+PASS	C2-hb interval=15	
+PASS	C2-privileged=false	
+PASS	C2-HOST_EXEC_PROFILE=false	
+PASS	C2-无 ibex 卷	
+PASS	C2-operator 已移除	
+PASS	C2-受限模式仍采集	
+PASS	C2-恢复后 operator Running	
+SUPERSEDED/EXPLAINED	C3-config 含自定义 job	C3f-config 含自定义 job
+PASS	C3-新 job up=1	
+SUPERSEDED/EXPLAINED	6.1-包内容与仓库目录一致	6.1-其余文件一致
+PASS	6.1-包内无 .DS_Store/.git	
+SUPERSEDED/EXPLAINED	6.2-show values 与仓库一致	6.2-show values 与仓库一致(忽略空行)
+PASS	6.3-远端 lint 0 failed	
+PASS	6.3-Helm3 下 1.19 可通过	
+PASS	6.3-Helm3 下 1.37.2 可通过	
+PASS	6.3-Helm3 下 1.38 被拒	
+PASS	6.4-预发布不更新 latest 提示	
+PASS	6.4-预发布不调用 oras	
+PASS	6.4-正式版调用 oras 打 latest	
+PASS	6.1-Chart.yaml 语义一致	
+PASS	6.1-其余文件一致	
+PASS	6.2-show values 与仓库一致(忽略空行)	
+PASS	C3-负向不改变 revision	
+PASS	C3-恢复后无自定义 job	
+SUPERSEDED/EXPLAINED	C4-改坏 path 后 target down	C4-2改坏后无新鲜 up=1
+PASS	C4-恢复 path 后 target up	
+SUPERSEDED/EXPLAINED	C5-cadvisor 关闭后 kubelet up 消失	C5f-cadvisor 关闭后 kubelet up 消失
+SUPERSEDED/EXPLAINED	C5-nodeExporter 关闭后 node_cpu 消失	C5f-nodeExporter 关闭后 node_cpu 消失
+SUPERSEDED/EXPLAINED	C5-hostNative.disk 关闭后 disk_used 消失	C5f-hostNative.disk 关闭后 disk_used 消失
+PASS	C5-恢复后 node_cpu	
+PASS	C5-恢复后 disk_used	
+PASS	C5-恢复后 kubelet up	
+PASS	C6-KSM job 移除	
+PASS	C6-coredns job 移除	
+PASS	C6-networkPlugin job 移除	
+PASS	C6-controlPlane 4 job	
+PASS	C6-kubeProxy 输入移除	
+PASS	C6-运行时 coredns up 消失	
+SUPERSEDED/EXPLAINED	C6-运行时 kube-proxy up 消失	C6f-kube-proxy up 消失
+PASS	C6-运行时 KSM up 消失	
+SUPERSEDED/EXPLAINED	C6-apiserver 可采集	KNOWN-DEFECT F5
+PASS	C6-恢复后 coredns	
+PASS	C6-恢复后 kube-proxy	
+PASS	C6-恢复后 KSM	
+PASS	C7-KSM Deployment 移除	
+SUPERSEDED/EXPLAINED	C7-KSM target 掉线	C7f-KSM target 消失
+PASS	C7-恢复后 KSM up	
+PASS	C8-operator list nodes	
+PASS	C8-operator create leases	
+PASS	C8-operator 不可建 secret	
+PASS	C8-node-agent list pods	
+PASS	C8-node-agent get nodes/metrics	
+PASS	C8-node-agent 不可建 secret	
+SUPERSEDED/EXPLAINED	C9-rg 设备数	G10-rg 设备数
+SUPERSEDED/EXPLAINED	C9-ident 含 -rg-	G10-rg 设备 ident 含 -rg-
+PASS	C9-主集群设备不受影响	
+SUPERSEDED/EXPLAINED	C9-rg 卸载后本集群清理	G10b-rg 卸载后本集群设备清理
+PASS	C9-rg 卸载不影响主集群	
+PASS	C3f-config 含自定义 job	
+PASS	C3f-新 job up=1	
+PASS	C3f-恢复后无自定义 job	
+SUPERSEDED/EXPLAINED	C4f-改坏 path 后无 up=1 target	C4-2改坏后无新鲜 up=1
+PASS	C4f-恢复 path 后 up=1 target 出现	
+PASS	C5f-cadvisor 关闭后 kubelet up 消失	
+PASS	C5f-nodeExporter 关闭后 node_cpu 消失	
+PASS	C5f-hostNative.disk 关闭后 disk_used 消失	
+PASS	C5f-恢复后 node_cpu	
+PASS	C5f-恢复后 disk_used	
+PASS	C6f-coredns up 消失	
+PASS	C6f-kube-proxy up 消失	
+PASS	C6f-KSM up 消失	
+SUPERSEDED/EXPLAINED	C6f-apiserver up=1	KNOWN-DEFECT F5
+PASS	C6f-恢复后 coredns	
+PASS	C6f-恢复后 kube-proxy	
+PASS	C6f-恢复后 KSM	
+PASS	C7f-KSM Deployment 移除	
+PASS	C7f-KSM target 消失	
+SUPERSEDED/EXPLAINED	C7f-kube_pod_info 停止上报	EXPLAINED: annotated-metrics-test 使用 KSM 镜像，kube_pod_info 由 app-metrics 任务继续提供
+PASS	C7f-恢复后 KSM up	
+PASS	C7f-恢复后 kube_pod_info	
+PASS	C9-rg 卸载后清理	
+PASS	3.1-心跳年龄<=60s(age=3s)	
+PASS	3.1-heartbeatGid=2 生效(group_objs)	
+PASS	AUDIT-A1-包SHA256	
+PASS	AUDIT-A2-Chart version	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	
+PASS	AUDIT-A5-interval=0 被拒	
+PASS	AUDIT-A6-与0.2.4渲染等价(diff 行数)	
+PASS	AUDIT-A7-设备 target_up=2 数量	
+PASS	AUDIT-A8-指标含 owner=platform	
+PASS	AUDIT-A9-app-metrics target up	
+PASS	AUDIT-A10-Release chart	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	
+PASS	AUDIT-A12-operator 可 list nodes	
+SUPERSEDED/EXPLAINED	AUDIT-A13-集群版本 1.28.2 在允许区间	AUDIT-A13-集群版本 1.28.2
+PASS	AUDIT-A13-集群版本 1.28.2	
+PASS	G9-差异仅README	
+PASS	G9-渲染零差异	
+PASS	G9-新包lint通过	
+PASS	G5-5.1 删除 Node Agent Pod-Pod 重建	
+PASS	G5-5.1-设备仍 3 台 target_up=2	
+PASS	G5-5.2 删除 KSM Agent Pod-Pod 重建	
+PASS	G5-5.3 删除 Operator Pod（重新选主）-Pod 重建	
+PASS	G5-5.3-operator 重建后 Ready	
+PASS	G5-5.4 删除 kube-state-metrics Pod-Pod 重建	
+PASS	G5-5.4-KSM target 恢复	
+PASS	C4-2改坏后无新鲜 up=1	
+PASS	C4-2恢复后新鲜 up=1	
+PASS	G5-5.4-KSM target 恢复(70s)	
+PASS	C9-2-rg 设备数	
+SUPERSEDED/EXPLAINED	C9-2-rg 卸载后清理	G10b-rg 卸载后本集群设备清理
+PASS	C9-2-主集群不受影响	
+PASS	C7f-kube_pod_info 停止上报(带cluster过滤)	
+PASS	G10-rg 设备数	
+PASS	G10-rg 设备 ident 含 -rg-	
+SUPERSEDED/EXPLAINED	G10-rg 卸载后本集群设备清理	G10b-rg 卸载后本集群设备清理
+PASS	G10-主集群设备不受影响	
+PASS	G10b-rg 卸载后本集群设备清理	
+PASS	G10b-主集群设备不受影响	

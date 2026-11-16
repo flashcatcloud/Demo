@@ -3,7 +3,7 @@
 # 布局：基础配置 / 节点级采集 / 集群级采集 / K8s 组件
 # 默认：除 K8s 组件外，全部安装并启用；K8s 组件按需开启
 # 版本：完整注释版（所有可配置项都在此，带 # 的为可选高级配置，取消注释即生效）
-# 默认使用精简版：values-examples/values.yaml（只保留最常用配置）
+# 完整参数参考（按需复制片段；my-values.yaml 建议以 values.yaml 精简版为起点）
 # 说明：本文件是完整取值参考（helm 安装时用 -f 覆盖 chart 默认值）。
 #       以「未注释」的字段为准；未写出的键沿用 chart 自带默认值。
 # 用法：
@@ -22,6 +22,19 @@ categraf:
   heartbeatGid: ""                        # 可选：业务组 GID，配置后自动归入该业务组；不配则上报到未分组，可在 Flashcat 网页端手动管理
   clusterName: "Kubernetes-cluster"       # 必填：同一 Flashcat 下必须全局唯一；多 Release 并存时每个 Release 使用不同值
   env: "test"                             # 可选：环境标签，如 prod / test
+  # customLabels:                         # 可选：附加到所有上报指标的自定义标签
+  #   region: cn-shanghai                 # 键必须符合 Prometheus 标签名规范
+  #   owner: platform                     # env、cluster、categraf 为保留标签，不能覆盖
+  # --- 少量运行时参数（可选）---
+  config:
+    interval: 15
+  writer:
+    # batch: 2000                         # 不配置时 Node=2000、KSM=1000
+    chanSize: 1000000
+  heartbeat:
+    interval: 10
+    timeout: 5000
+    dialTimeout: 2500
   # --- Prometheus 远程写入认证（可选，默认如下）---
   # remoteWriteUser: "user001"
   # remoteWritePassword: ""
@@ -64,8 +77,8 @@ nodeCategraf:
   # 是否安装 Node Agent
   enabled: true
   # DaemonSet 名称由 Release 决定（<release>），并自动同步给 operator
-  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/categraf_ent:servicemap-v0.5.32）
-  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.32
+  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/categraf_ent:servicemap-v0.5.45）
+  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.45
   # --- 可选高级配置（默认如下，一般保持默认即可）---
   # pullPolicy: IfNotPresent
   # resources:
@@ -120,8 +133,8 @@ nodeCategraf:
 ksmCategraf:
   # 是否安装 ksmCategraf
   enabled: true
-  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/categraf_ent:v0.5.32）
-  image: registry.flashcat.cloud/public/categraf_ent:v0.5.32
+  # 镜像地址（内网部署时改为你的镜像仓库，如 <mirror>/categraf_ent:v0.5.45）
+  image: registry.flashcat.cloud/public/categraf_ent:v0.5.45
   # --- 可选高级配置（默认如下，一般保持默认即可）---
   # pullPolicy: IfNotPresent
   # replicas: 1
@@ -131,7 +144,7 @@ ksmCategraf:
   #     memory: 512Mi
   #   limits:
   #     cpu: 1000m
-  #     memory: 1.5Gi
+  #     memory: 2Gi
   jobs:
     # 是否启用 kubeStateMetrics 采集任务（K8s 对象状态指标，依赖 kube-state-metrics）
     kubeStateMetrics: true
@@ -153,8 +166,18 @@ kubeStateMetrics:
   #     memory: 1Gi
 
 appMetrics:
-  # 是否启用应用指标自动发现（抓取打了 metrics-scrape: "true" 标签的 Pod）
+  # 是否启用应用指标自动发现（annotation 控制抓取，label 提供 service/team 身份）
   enabled: true
+  # 是否启用内置的 prometheus.io/* 注解采集任务（默认 true；设为 false 只保留下方 extraScrapeConfigs）
+  defaultJob:
+    enabled: true
+  # 特殊场景使用原生 Prometheus scrape_configs 扩展（Pod/Service/EndpointSlice 等）
+  # extraScrapeConfigs:
+  #   - job_name: customer-custom-job
+  #     kubernetes_sd_configs:
+  #       - role: pod
+  #     relabel_configs: []
+  extraScrapeConfigs: []
 
 # -----------------------------------------------------------------------------
 # 四、K8s 组件采集（示例默认关闭，需要时改为 true）

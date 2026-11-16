@@ -18,6 +18,30 @@ categraf:
   # --- 环境标签 ---
   env: "test"
 
+  # --- 自定义指标标签（可选）---
+  # 附加到 Node Agent、KSM Agent 以及 KSM/应用/组件抓取指标上。
+  # 键必须符合 Prometheus 标签名规范；env、cluster、categraf 为保留标签，不能覆盖。
+  customLabels: {}
+  #   region: "cn-shanghai"
+  #   owner: "platform"
+
+  # --- 少量运行时参数（可选）---
+  config:
+    interval: 15
+  # --- KSM Agent 的 Prometheus 抓取参数 ---
+  # scrapeInterval: 集群侧（KSM / 应用指标 / 组件指标）的抓取周期，单位秒，默认 15。
+  #                 与上面的 config.interval（input 周期）是两件事，不要混用。
+  prometheus:
+    scrapeInterval: 15
+  writer:
+    # 不配置时：Node Agent=2000，KSM Agent=1000
+    # batch: 2000
+    chanSize: 1000000
+  heartbeat:
+    interval: 10
+    timeout: 5000
+    dialTimeout: 2500
+
   # --- Prometheus 远程写入认证 ---
   remoteWriteUser: "user001"
   remoteWritePassword: ""
@@ -75,17 +99,18 @@ kubeStateMetrics:
 # ---------------------------------------------------------------------------
 ksmCategraf:
   enabled: true
-  image: registry.flashcat.cloud/public/categraf_ent:v0.5.32
+  image: registry.flashcat.cloud/public/categraf_ent:v0.5.45
   pullPolicy: IfNotPresent
   replicas: 1
   # 资源参考：中型集群（50~200 节点）默认值，大集群请调大
+  # 内存上限按 KSM 对象数增长，2Gi 可覆盖约 5k Pod 规模的集群
   resources:
     requests:
       cpu: 500m
       memory: 512Mi
     limits:
       cpu: 1000m
-      memory: 1.5Gi
+      memory: 2Gi
   # KSM Agent 各采集任务开关
   jobs:
     # K8s 对象状态指标（Pod/Node/Deployment/Service 等）
@@ -101,7 +126,7 @@ nodeCategraf:
   #   hostname = 宿主机 hostname；
   #   或自定义模板，如 "${cluster}-$hostname"（支持 ${cluster} ${nodeName} $hostname $ip；servicemap 场景勿加前缀）
   hostname: nodeName
-  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.32
+  image: registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.45
   pullPolicy: IfNotPresent
   # 资源参考：中型集群重节点默认值，按节点容器数调整
   resources:
@@ -148,11 +173,18 @@ nodeCategraf:
       operator: Exists
 
 # ---------------------------------------------------------------------------
-# 应用指标采集（K8s SD 自动发现）
-# 自动发现打了 metrics-scrape: "true" 标签的 Pod
+# 应用指标采集（K8s Pod SD 自动发现）
+# 使用 prometheus.io/* annotation 控制抓取，label 提供 service/team 身份。
 # ---------------------------------------------------------------------------
 appMetrics:
   enabled: true
+  # 是否启用内置的 prometheus.io/* 注解采集任务（默认 true）。
+  # 设为 false 后仅保留 extraScrapeConfigs 中自定义的采集任务。
+  defaultJob:
+    enabled: true
+  # 原生 Prometheus scrape_configs 扩展；用于无法通过 prometheus.io/* 默认任务覆盖的场景。
+  # 每个列表项必须是完整、合法的 Prometheus scrape_config。
+  extraScrapeConfigs: []
 
 # ---------------------------------------------------------------------------
 # 控制平面组件采集（K8s SD 自动发现，仅适用于 kubeadm Static Pod 集群）

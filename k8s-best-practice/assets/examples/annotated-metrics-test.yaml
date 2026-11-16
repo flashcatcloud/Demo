@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: annotated-metrics-test
+  namespace: categraf
+  labels:
+    app.kubernetes.io/name: annotated-metrics-test
+    app.kubernetes.io/part-of: categraf-regression
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: annotated-metrics-test
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: annotated-metrics-test
+        app.kubernetes.io/part-of: categraf-regression
+        team: platform
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "http"
+    spec:
+      serviceAccountName: categraf-kube-state-metrics
+      containers:
+        - name: metrics
+          image: registry.flashcat.cloud/public/kube-state-metrics/kube-state-metrics:v2.19.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-metrics
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

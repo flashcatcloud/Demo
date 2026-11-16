@@ -1,0 +1,779 @@
+PASS	1.1-version	0.2.2-rc.1	0.2.2-rc.1	
+PASS	1.1-appVersion	0.5.32	0.5.32	
+PASS	1.1-kubeVersion	'>=1.19.0-0 <1.38.0-0'	'>=1.19.0-0 <1.38.0-0'	
+PASS	1.1-sha256	88d9449a809096b60866355e58bdee5a7bb6488a9ff683252adad8b35a238a3a	88d9449a809096b60866355e58bdee5a7bb6488a9ff683252adad8b35a238a3a	
+PASS	1.1-无杂项文件	0	0	
+PASS	1.3-与0.2.4渲染等价	0	0	
+PASS	interval=0	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	interval=-1	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	batch=-1	categraf.writer.batch must be greater than or equal to 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.batch must be greater than or equal to 0  
+PASS	chanSize=0	categraf.writer.chanSize must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.chanSize must be greater than 0  
+PASS	heartbeat.interval=0	categraf.heartbeat.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.interval must be greater than 0  
+PASS	heartbeat.timeout=0	categraf.heartbeat.timeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.timeout must be greater than 0  
+PASS	heartbeat.dialTimeout=0	categraf.heartbeat.dialTimeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.dialTimeout must be greater than 0  
+PASS	customLabels 覆盖 cluster	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:37:8): categraf.customLabels cannot override reserved label "cluster"  
+PASS	customLabels 覆盖 env	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:37:8): categraf.customLabels cannot override reserved label "env"  
+PASS	customLabels 覆盖 categraf	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:37:8): categraf.customLabels cannot override reserved label "categraf"  
+PASS	customLabels 非法键 foo-bar	is not a valid Prometheus label name	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:37:8): categraf.customLabels key "foo-bar" is not a valid Prometheus label name  
+PASS	customLabels 值为 map	must be a string, number or boolean	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:37:8): categraf.customLabels["region"] must be a string, number or boolean  
+PASS	operator 无 userToken	operator.userToken 必填	render-fail	Error: execution error at (categraf/templates/operator.yaml:2:4): operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false  
+PASS	extraScrapeConfigs 非 list	appMetrics.extraScrapeConfigs must be a list	render-fail	Error: execution error at (categraf/templates/ksm-categraf.yaml:68:10): appMetrics.extraScrapeConfigs must be a list  
+PASS	batch=0 回落 Node=2000	1	1	
+PASS	batch=0 回落 KSM=1000	1	1	
+PASS	toggle-默认-DaemonSet	1	1	默认安装 node agent
+PASS	toggle-默认-StatefulSet	1	1	默认安装 ksm agent
+PASS	toggle-默认-Deployment	2	2	kube-state-metrics + operator
+PASS	toggle-nodeAgent-off-DS	0	0	nodeCategraf.enabled=false 不产生 DaemonSet
+PASS	toggle-nodeAgent-off-config	0	0	对应 configmap 也消失
+PASS	toggle-ksmAgent-off-STS	0	0	ksmCategraf.enabled=false 不产生 StatefulSet
+PASS	toggle-ksm-off-appMetrics-job	0	0	ksm 关闭时 app-metrics job 随之消失
+PASS	toggle-ksm-off-coreDns-job	0	0	ksm 关闭时 coredns job 随之消失
+PASS	toggle-ksm-metrics-job-off	0	0	jobs.kubeStateMetrics=false 移除 KSM job
+PASS	toggle-ksm-off	0	0	kubeStateMetrics.enabled=false 移除 Deployment/Service
+PASS	toggle-operator-off	0	0	operator.enabled=false 不产生 operator 资源
+PASS	toggle-operator-cleanup-hook	4	4	cleanup 两开关均 true 时 4 个 hook 资源带 pre-delete
+PASS	toggle-operator-cleanup-off	0	0	cleanup 均 false 时无 hook Job
+PASS	toggle-appMetrics-off	0	0	appMetrics.enabled=false 无 app-metrics job
+PASS	toggle-coreDns-off	0	0	coreDns.enabled=false 无 coredns job
+PASS	toggle-kubeProxy-off	0	0	kubeProxy.enabled=false 无 kube-proxy 输入
+PASS	toggle-networkPlugin-off	0	0	calico/cilium 都关则无对应 job
+PASS	toggle-controlPlane-on	4	4	controlPlane.enabled=true 增加 4 个控制平面 job
+PASS	toggle-cadvisor-off	0	0	inputs.cadvisor=false 去掉 cadvisor 输入
+PASS	toggle-nodeExporter-off	0	0	inputs.nodeExporter=false 去掉 node_exporter 输入
+PASS	toggle-hostExec-off	0	0	hostExec.enabled=false 不挂 ibex
+PASS	镜像-categraf_ent(ksm)	1	1	
+PASS	镜像-servicemap(node)	1	1	
+PASS	镜像-ksm	1	1	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	2	2	
+PASS	hostNetwork+hostPID	2	2	
+PASS	hostfs 挂载(node agent 容器)	1	1	
+PASS	hostfs 宿主根挂载	1	1	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	3	3	
+PASS	selector 块数量且均含 instance	5	5	
+PASS	G2-远端包SHA	88d9449a809096b60866355e58bdee5a7bb6488a9ff683252adad8b35a238a3a	88d9449a809096b60866355e58bdee5a7bb6488a9ff683252adad8b35a238a3a	
+PASS	G2-远端包SHA	88d9449a809096b60866355e58bdee5a7bb6488a9ff683252adad8b35a238a3a	88d9449a809096b60866355e58bdee5a7bb6488a9ff683252adad8b35a238a3a	
+PASS	G2-卸载后本集群设备数	0	0	
+PASS	G2-卸载不影响其它集群设备	3	3	
+PASS	G2-卸载后 release 列表为空	0	0	
+PASS	3.1-设备数	3	3	
+PASS	3.1-全部 target_up=2	3	3	
+PASS	3.1-心跳年龄<=60s(age=5s)	>=0	55	beat_time 距今不超过 60s
+FAIL	3.1-heartbeatGid=2 生效	2	0	
+PASS	3.1-agent 版本	ent-v0.5.32	ent-v0.5.32	
+FAIL	3.1-customLabels owner 落库	platform	缺失	
+FAIL	3.1-customLabels environment 落库	test	缺失	
+PASS	3.2-up 全为 1	0	0	
+FAIL	3.2-series 总量	>=13000	12439	
+PASS	3.2-node_exporter 节点数	>=2	2	
+PASS	3.2-kube-state-metrics 指标	>=1	16	
+FAIL	3.2-app-metrics target up	1	absent	
+PASS	3.2-cadvisor 容器指标	>=1	58	
+FAIL	3.4-syslog tail 报错已消除	0	22	
+PASS	3.1-设备数	3	3	
+PASS	3.1-全部 target_up=2	3	3	
+PASS	3.1-心跳年龄<=60s(age=4s)	>=0	56	beat_time 距今不超过 60s
+FAIL	3.1-heartbeatGid=2 生效	2	0	
+PASS	3.1-agent 版本	ent-v0.5.32	ent-v0.5.32	
+PASS	3.1-customLabels owner 落库	platform	platform	
+PASS	3.1-customLabels environment 落库	test	test	
+PASS	7.1-README kubeVersion 与 Chart.yaml 一致	1	1	
+PASS	7.4-文档拉包版本=生产 0.2.1	1	1	
+PASS	7.4-文档 kubeVersion 与 Chart 一致	1	1	
+PASS	7.4-仓库存在 0.2.1	1	1	
+PASS	7.6-记录文件名符合命名规则	3	3	
+PASS	3.2-up 全为 1	0	0	
+PASS	3.2-series 总量	>=12000	25891	
+PASS	3.2-node_exporter 节点数	>=2	2	
+PASS	3.2-kube-state-metrics 指标	>=1	43	
+PASS	3.2-app-metrics target up	1	1	
+PASS	3.2-cadvisor 容器指标	>=1	117	
+PASS	C1-config region	1	1	
+PASS	C1-scrape region	1	1	
+PASS	C1-metrics region 标签	>=1	13276	
+PASS	C1-设备 tags region	3	3	
+PASS	C1-恢复后无 region	0	0	
+PASS	C2-interval=25	1	1	
+PASS	C2-batch=4000	1	1	
+PASS	C2-hb interval=15	1	1	
+PASS	C2-privileged=false	false	false	
+PASS	C2-HOST_EXEC_PROFILE=false	false	false	
+PASS	C2-无 ibex 卷	0	0	
+PASS	C2-operator 已移除	0	0	
+PASS	C2-受限模式仍采集	>=1	64	
+PASS	C2-恢复后 operator Running	1	1	
+FAIL	C3-config 含自定义 job	1	0	
+PASS	C3-新 job up=1	1	1	
+PASS	C1-config region	1	1	
+PASS	C1-scrape region	1	1	
+PASS	C1-metrics region 标签	>=1	13783	
+PASS	C1-设备 tags region	3	3	
+PASS	C1-恢复后无 region	0	0	
+FAIL	6.1-包内容与仓库目录一致	0	32	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+FAIL	6.2-show values 与仓库一致	0	2	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+PASS	6.1-其余文件一致	0	0	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	7.1-README kubeVersion 与 Chart.yaml 一致	1	1	
+PASS	7.4-文档拉包版本=生产 0.2.1	1	1	
+PASS	7.4-文档 kubeVersion 与 Chart 一致	1	1	
+PASS	7.4-仓库存在 0.2.1	1	1	
+PASS	7.6-记录文件名符合命名规则	3	3	
+PASS	C1-config region	1	1	
+PASS	C1-scrape region	1	1	
+PASS	C1-metrics region 标签	>=1	17417	
+PASS	C1-设备 tags region	3	3	
+PASS	C1-恢复后无 region	0	0	
+PASS	C2-interval=25	1	1	
+PASS	C2-batch=4000	1	1	
+PASS	C2-hb interval=15	1	1	
+PASS	C2-privileged=false	false	false	
+PASS	C2-HOST_EXEC_PROFILE=false	false	false	
+PASS	C2-无 ibex 卷	0	0	
+PASS	C2-operator 已移除	0	0	
+PASS	C2-受限模式仍采集	>=1	64	
+PASS	C2-恢复后 operator Running	1	1	
+FAIL	C3-config 含自定义 job	1	0	
+PASS	C3-新 job up=1	1	1	
+PASS	C3-负向不改变 revision	17	17	
+PASS	C3-恢复后无自定义 job	0	0	
+FAIL	C4-改坏 path 后 target down	0	1	
+PASS	C4-恢复 path 后 target up	1	1	
+FAIL	C5-cadvisor 关闭后 kubelet up 消失	0	4	
+FAIL	C5-nodeExporter 关闭后 node_cpu 消失	0	64	
+FAIL	C5-hostNative.disk 关闭后 disk_used 消失	0	121	
+PASS	C5-恢复后 node_cpu	>=1	64	
+PASS	C5-恢复后 disk_used	>=1	125	
+PASS	C5-恢复后 kubelet up	>=1	4	
+PASS	C6-KSM job 移除	0	0	
+PASS	C6-coredns job 移除	0	0	
+PASS	C6-networkPlugin job 移除	0	0	
+PASS	C6-controlPlane 4 job	4	4	
+PASS	C6-kubeProxy 输入移除	0	0	
+PASS	C6-运行时 coredns up 消失	0	0	
+FAIL	C6-运行时 kube-proxy up 消失	0	2	
+PASS	C6-运行时 KSM up 消失	0	0	
+FAIL	C6-apiserver 可采集	1	absent	
+PASS	C6-恢复后 coredns	>=1	2	
+PASS	C6-恢复后 kube-proxy	>=1	2	
+PASS	C6-恢复后 KSM	>=1	1	
+PASS	C7-KSM Deployment 移除	0	0	
+FAIL	C7-KSM target 掉线	0	1	
+PASS	C7-恢复后 KSM up	1	1	
+PASS	C8-operator list nodes	yes	yes	
+PASS	C8-operator create leases	yes	yes	
+PASS	C8-operator 不可建 secret	no	no	
+PASS	C8-node-agent list pods	yes	yes	
+PASS	C8-node-agent get nodes/metrics	yes	yes	
+PASS	C8-node-agent 不可建 secret	no	no	
+FAIL	C9-rg 设备数	3		
+FAIL	C9-ident 含 -rg-	3		
+PASS	C9-主集群设备不受影响	3	3	
+FAIL	C9-rg 卸载后本集群清理	0		
+PASS	C9-rg 卸载不影响主集群	3	3	
+PASS	C3f-config 含自定义 job	1	1	
+PASS	C3f-新 job up=1	1	1	
+PASS	C3f-恢复后无自定义 job	0	0	
+FAIL	C4f-改坏 path 后无 up=1 target	0	1	
+PASS	C4f-恢复 path 后 up=1 target 出现	1	1	
+PASS	C5f-cadvisor 关闭后 kubelet up 消失	0	0	
+PASS	C5f-nodeExporter 关闭后 node_cpu 消失	0	0	
+PASS	C5f-hostNative.disk 关闭后 disk_used 消失	0	0	
+PASS	C5f-恢复后 node_cpu	>=1	64	
+PASS	C5f-恢复后 disk_used	>=1	121	
+PASS	C6f-coredns up 消失	0	0	
+PASS	C6f-kube-proxy up 消失	0	0	
+PASS	C6f-KSM up 消失	0	0	
+FAIL	C6f-apiserver up=1	1	0	
+PASS	C6f-恢复后 coredns	>=1	2	
+PASS	C6f-恢复后 kube-proxy	>=1	2	
+PASS	C6f-恢复后 KSM	>=1	1	
+PASS	C7f-KSM Deployment 移除	0	0	
+PASS	C7f-KSM target 消失	0	0	
+FAIL	C7f-kube_pod_info 停止上报	0	15	
+PASS	C7f-恢复后 KSM up	>=1	1	
+PASS	C7f-恢复后 kube_pod_info	>=1	32	
+FAIL	C9-rg 设备数	3	0	
+FAIL	C9-ident 含 -rg-	3	0	
+PASS	C9-主集群设备不受影响	3	3	
+PASS	C9-rg 卸载后清理	0	0	
+PASS	C9-rg 卸载不影响主集群	3	3	
+PASS	3.1-设备数	3	3	
+PASS	3.1-全部 target_up=2	3	3	
+PASS	3.1-心跳年龄<=60s(age=3s)	>=0	57	beat_time 距今不超过 60s
+PASS	3.1-heartbeatGid=2 生效(group_objs)	2	2	
+PASS	3.1-agent 版本	ent-v0.5.32	ent-v0.5.32	
+PASS	3.1-customLabels owner 落库	platform	platform	
+PASS	3.1-customLabels environment 落库	test	test	
+PASS	3.2-up 全为 1	0	0	
+PASS	3.2-series 总量	>=12000	15314	
+PASS	3.2-node_exporter 节点数	>=2	2	
+PASS	3.2-kube-state-metrics 指标	>=1	36	
+PASS	3.2-app-metrics target up	1	1	
+PASS	3.2-cadvisor 容器指标	>=1	70	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+PASS	6.1-其余文件一致	0	0	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	AUDIT-A1-包SHA256	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.1	0.2.2-rc.1	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	15314	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.1	categraf-0.2.2-rc.1	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+FAIL	AUDIT-A13-集群版本 1.28.2 在允许区间	OK	MISMATCH	
+PASS	AUDIT-A1-包SHA256	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.1	0.2.2-rc.1	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	15314	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.1	categraf-0.2.2-rc.1	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	G9-差异仅README	1	1	
+PASS	G9-渲染零差异	0	0	
+PASS	G9-新包lint通过	1	1	
+PASS	G5-5.1 删除 Node Agent Pod-Pod 重建	ok	ok	
+PASS	G5-5.1-设备仍 3 台 target_up=2	3	3	
+PASS	G5-5.2 删除 KSM Agent Pod-Pod 重建	ok	ok	
+PASS	G5-5.3 删除 Operator Pod（重新选主）-Pod 重建	ok	ok	
+PASS	G5-5.3-operator 重建后 Ready	1	1	
+PASS	G5-5.4 删除 kube-state-metrics Pod-Pod 重建	ok	ok	
+FAIL	G5-5.4-KSM target 恢复	1	absent	
+PASS	C4-2改坏后无新鲜 up=1	0	0	
+PASS	C4-2恢复后新鲜 up=1	>=1	1	
+PASS	G5-5.4-KSM target 恢复(70s)	1	1	40s 时序列尚未重建，70s 复查已恢复
+PASS	C9-2-rg 设备数	3	3	
+FAIL	C9-2-rg 卸载后清理	0	3	
+PASS	C9-2-主集群不受影响	3	3	
+PASS	G5-5.1 删除 Node Agent Pod-Pod 重建	ok	ok	
+PASS	G5-5.1-设备仍 3 台 target_up=2	3	3	
+PASS	G5-5.2 删除 KSM Agent Pod-Pod 重建	ok	ok	
+PASS	G5-5.3 删除 Operator Pod（重新选主）-Pod 重建	ok	ok	
+PASS	G5-5.3-operator 重建后 Ready	1	1	
+PASS	G5-5.4 删除 kube-state-metrics Pod-Pod 重建	ok	ok	
+PASS	G5-5.4-KSM target 恢复	1	1	
+PASS	C7f-kube_pod_info 停止上报(带cluster过滤)	0	0	首轮未过滤导致误判，更正后通过
+PASS	G10-rg 设备数	3	3	
+PASS	G10-rg 设备 ident 含 -rg-	3	3	
+FAIL	G10-rg 卸载后本集群设备清理	0	3	
+PASS	G10-主集群设备不受影响	3	3	
+PASS	G10b-rg 卸载后本集群设备清理	0	0	
+PASS	G10b-主集群设备不受影响	3	3	
+PASS	AUDIT-A1-包SHA256	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.1	0.2.2-rc.1	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	63560	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.1	categraf-0.2.2-rc.1	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	1.1-version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	1.1-appVersion	0.5.32	0.5.32	
+PASS	1.1-kubeVersion	'>=1.19.0-0 <1.38.0-0'	'>=1.19.0-0 <1.38.0-0'	
+PASS	1.1-sha256	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	
+PASS	1.1-无杂项文件	0	0	
+FAIL	1.3-与0.2.4渲染等价	0	29	
+PASS	interval=0	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	interval=-1	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	batch=-1	categraf.writer.batch must be greater than or equal to 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.batch must be greater than or equal to 0  
+PASS	chanSize=0	categraf.writer.chanSize must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.chanSize must be greater than 0  
+PASS	heartbeat.interval=0	categraf.heartbeat.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.interval must be greater than 0  
+PASS	heartbeat.timeout=0	categraf.heartbeat.timeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.timeout must be greater than 0  
+PASS	heartbeat.dialTimeout=0	categraf.heartbeat.dialTimeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.dialTimeout must be greater than 0  
+PASS	customLabels 覆盖 cluster	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "cluster"  
+PASS	customLabels 覆盖 env	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "env"  
+PASS	customLabels 覆盖 categraf	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "categraf"  
+PASS	customLabels 非法键 foo-bar	is not a valid Prometheus label name	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels key "foo-bar" is not a valid Prometheus label name  
+PASS	customLabels 值为 map	must be a string, number or boolean	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels["region"] must be a string, number or boolean  
+PASS	operator 无 userToken	operator.userToken 必填	render-fail	Error: execution error at (categraf/templates/operator.yaml:2:4): operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false  
+PASS	extraScrapeConfigs 非 list	appMetrics.extraScrapeConfigs must be a list	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): appMetrics.extraScrapeConfigs must be a list  
+PASS	batch=0 回落 Node=2000	1	1	
+PASS	batch=0 回落 KSM=1000	1	1	
+PASS	toggle-默认-DaemonSet	1	1	默认安装 node agent
+PASS	toggle-默认-StatefulSet	1	1	默认安装 ksm agent
+PASS	toggle-默认-Deployment	2	2	kube-state-metrics + operator
+PASS	toggle-nodeAgent-off-DS	0	0	nodeCategraf.enabled=false 不产生 DaemonSet
+PASS	toggle-nodeAgent-off-config	0	0	对应 configmap 也消失
+PASS	toggle-ksmAgent-off-STS	0	0	ksmCategraf.enabled=false 不产生 StatefulSet
+PASS	toggle-ksm-off-appMetrics-job	0	0	ksm 关闭时 app-metrics job 随之消失
+PASS	toggle-ksm-off-coreDns-job	0	0	ksm 关闭时 coredns job 随之消失
+PASS	toggle-ksm-metrics-job-off	0	0	jobs.kubeStateMetrics=false 移除 KSM job
+PASS	toggle-ksm-off	0	0	kubeStateMetrics.enabled=false 移除 Deployment/Service
+PASS	toggle-operator-off	0	0	operator.enabled=false 不产生 operator 资源
+PASS	toggle-operator-cleanup-hook	4	4	cleanup 两开关均 true 时 4 个 hook 资源带 pre-delete
+PASS	toggle-operator-cleanup-off	0	0	cleanup 均 false 时无 hook Job
+PASS	toggle-appMetrics-off	0	0	appMetrics.enabled=false 无 app-metrics job
+PASS	toggle-coreDns-off	0	0	coreDns.enabled=false 无 coredns job
+PASS	toggle-kubeProxy-off	0	0	kubeProxy.enabled=false 无 kube-proxy 输入
+PASS	toggle-networkPlugin-off	0	0	calico/cilium 都关则无对应 job
+PASS	toggle-controlPlane-on	4	4	controlPlane.enabled=true 增加 4 个控制平面 job
+PASS	toggle-cadvisor-off	0	0	inputs.cadvisor=false 去掉 cadvisor 输入
+PASS	toggle-nodeExporter-off	0	0	inputs.nodeExporter=false 去掉 node_exporter 输入
+PASS	toggle-hostExec-off	0	0	hostExec.enabled=false 不挂 ibex
+PASS	镜像-categraf_ent(ksm)	1	1	
+PASS	镜像-servicemap(node)	1	1	
+PASS	镜像-ksm	1	1	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	2	2	
+PASS	hostNetwork+hostPID	2	2	
+PASS	hostfs 挂载(node agent 容器)	1	1	
+PASS	hostfs 宿主根挂载	1	1	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	3	3	
+PASS	selector 块数量且均含 instance	5	5	
+PASS	1.1-version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	1.1-appVersion	0.5.32	0.5.32	
+PASS	1.1-kubeVersion	'>=1.19.0-0 <1.38.0-0'	'>=1.19.0-0 <1.38.0-0'	
+PASS	1.1-sha256	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	
+PASS	1.1-无杂项文件	0	0	
+FAIL	1.3-与0.2.4渲染等价	0	29	
+PASS	interval=0	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	interval=-1	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	batch=-1	categraf.writer.batch must be greater than or equal to 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.batch must be greater than or equal to 0  
+PASS	chanSize=0	categraf.writer.chanSize must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.chanSize must be greater than 0  
+PASS	heartbeat.interval=0	categraf.heartbeat.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.interval must be greater than 0  
+PASS	heartbeat.timeout=0	categraf.heartbeat.timeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.timeout must be greater than 0  
+PASS	heartbeat.dialTimeout=0	categraf.heartbeat.dialTimeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.dialTimeout must be greater than 0  
+PASS	customLabels 覆盖 cluster	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "cluster"  
+PASS	customLabels 覆盖 env	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "env"  
+PASS	customLabels 覆盖 categraf	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "categraf"  
+PASS	customLabels 非法键 foo-bar	is not a valid Prometheus label name	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels key "foo-bar" is not a valid Prometheus label name  
+PASS	customLabels 值为 map	must be a string, number or boolean	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels["region"] must be a string, number or boolean  
+PASS	operator 无 userToken	operator.userToken 必填	render-fail	Error: execution error at (categraf/templates/operator.yaml:2:4): operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false  
+PASS	extraScrapeConfigs 非 list	appMetrics.extraScrapeConfigs must be a list	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): appMetrics.extraScrapeConfigs must be a list  
+PASS	batch=0 回落 Node=2000	1	1	
+PASS	batch=0 回落 KSM=1000	1	1	
+PASS	toggle-默认-DaemonSet	1	1	默认安装 node agent
+PASS	toggle-默认-StatefulSet	1	1	默认安装 ksm agent
+PASS	toggle-默认-Deployment	2	2	kube-state-metrics + operator
+PASS	toggle-nodeAgent-off-DS	0	0	nodeCategraf.enabled=false 不产生 DaemonSet
+PASS	toggle-nodeAgent-off-config	0	0	对应 configmap 也消失
+PASS	toggle-ksmAgent-off-STS	0	0	ksmCategraf.enabled=false 不产生 StatefulSet
+PASS	toggle-ksm-off-appMetrics-job	0	0	ksm 关闭时 app-metrics job 随之消失
+PASS	toggle-ksm-off-coreDns-job	0	0	ksm 关闭时 coredns job 随之消失
+PASS	toggle-ksm-metrics-job-off	0	0	jobs.kubeStateMetrics=false 移除 KSM job
+PASS	toggle-ksm-off	0	0	kubeStateMetrics.enabled=false 移除 Deployment/Service
+PASS	toggle-operator-off	0	0	operator.enabled=false 不产生 operator 资源
+PASS	toggle-operator-cleanup-hook	4	4	cleanup 两开关均 true 时 4 个 hook 资源带 pre-delete
+PASS	toggle-operator-cleanup-off	0	0	cleanup 均 false 时无 hook Job
+PASS	toggle-appMetrics-off	0	0	appMetrics.enabled=false 无 app-metrics job
+PASS	toggle-coreDns-off	0	0	coreDns.enabled=false 无 coredns job
+PASS	toggle-kubeProxy-off	0	0	kubeProxy.enabled=false 无 kube-proxy 输入
+PASS	toggle-networkPlugin-off	0	0	calico/cilium 都关则无对应 job
+PASS	toggle-controlPlane-on	4	4	controlPlane.enabled=true 增加 4 个控制平面 job
+PASS	toggle-cadvisor-off	0	0	inputs.cadvisor=false 去掉 cadvisor 输入
+PASS	toggle-nodeExporter-off	0	0	inputs.nodeExporter=false 去掉 node_exporter 输入
+PASS	toggle-hostExec-off	0	0	hostExec.enabled=false 不挂 ibex
+PASS	镜像-categraf_ent(ksm)	1	1	
+PASS	镜像-servicemap(node)	1	1	
+PASS	镜像-ksm	1	1	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	2	2	
+PASS	hostNetwork+hostPID	2	2	
+PASS	hostfs 挂载(node agent 容器)	1	1	
+PASS	hostfs 宿主根挂载	1	1	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	3	3	
+PASS	selector 块数量且均含 instance	5	5	
+PASS	1.1-version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	1.1-appVersion	0.5.32	0.5.32	
+PASS	1.1-kubeVersion	'>=1.19.0-0 <1.38.0-0'	'>=1.19.0-0 <1.38.0-0'	
+PASS	1.1-sha256	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	
+PASS	1.1-无杂项文件	0	0	
+PASS	1.3-与0.2.4渲染等价	0	0	
+PASS	interval=0	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	interval=-1	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	batch=-1	categraf.writer.batch must be greater than or equal to 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.batch must be greater than or equal to 0  
+PASS	chanSize=0	categraf.writer.chanSize must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.chanSize must be greater than 0  
+PASS	heartbeat.interval=0	categraf.heartbeat.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.interval must be greater than 0  
+PASS	heartbeat.timeout=0	categraf.heartbeat.timeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.timeout must be greater than 0  
+PASS	heartbeat.dialTimeout=0	categraf.heartbeat.dialTimeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.dialTimeout must be greater than 0  
+PASS	customLabels 覆盖 cluster	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "cluster"  
+PASS	customLabels 覆盖 env	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "env"  
+PASS	customLabels 覆盖 categraf	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "categraf"  
+PASS	customLabels 非法键 foo-bar	is not a valid Prometheus label name	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels key "foo-bar" is not a valid Prometheus label name  
+PASS	customLabels 值为 map	must be a string, number or boolean	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels["region"] must be a string, number or boolean  
+PASS	operator 无 userToken	operator.userToken 必填	render-fail	Error: execution error at (categraf/templates/operator.yaml:2:4): operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false  
+PASS	extraScrapeConfigs 非 list	appMetrics.extraScrapeConfigs must be a list	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): appMetrics.extraScrapeConfigs must be a list  
+PASS	batch=0 回落 Node=2000	1	1	
+PASS	batch=0 回落 KSM=1000	1	1	
+PASS	toggle-默认-DaemonSet	1	1	默认安装 node agent
+PASS	toggle-默认-StatefulSet	1	1	默认安装 ksm agent
+PASS	toggle-默认-Deployment	2	2	kube-state-metrics + operator
+PASS	toggle-nodeAgent-off-DS	0	0	nodeCategraf.enabled=false 不产生 DaemonSet
+PASS	toggle-nodeAgent-off-config	0	0	对应 configmap 也消失
+PASS	toggle-ksmAgent-off-STS	0	0	ksmCategraf.enabled=false 不产生 StatefulSet
+PASS	toggle-ksm-off-appMetrics-job	0	0	ksm 关闭时 app-metrics job 随之消失
+PASS	toggle-ksm-off-coreDns-job	0	0	ksm 关闭时 coredns job 随之消失
+PASS	toggle-ksm-metrics-job-off	0	0	jobs.kubeStateMetrics=false 移除 KSM job
+PASS	toggle-ksm-off	0	0	kubeStateMetrics.enabled=false 移除 Deployment/Service
+PASS	toggle-operator-off	0	0	operator.enabled=false 不产生 operator 资源
+PASS	toggle-operator-cleanup-hook	4	4	cleanup 两开关均 true 时 4 个 hook 资源带 pre-delete
+PASS	toggle-operator-cleanup-off	0	0	cleanup 均 false 时无 hook Job
+PASS	toggle-appMetrics-off	0	0	appMetrics.enabled=false 无 app-metrics job
+PASS	toggle-coreDns-off	0	0	coreDns.enabled=false 无 coredns job
+PASS	toggle-kubeProxy-off	0	0	kubeProxy.enabled=false 无 kube-proxy 输入
+PASS	toggle-networkPlugin-off	0	0	calico/cilium 都关则无对应 job
+PASS	toggle-controlPlane-on	4	4	controlPlane.enabled=true 增加 4 个控制平面 job
+PASS	toggle-cadvisor-off	0	0	inputs.cadvisor=false 去掉 cadvisor 输入
+PASS	toggle-nodeExporter-off	0	0	inputs.nodeExporter=false 去掉 node_exporter 输入
+PASS	toggle-hostExec-off	0	0	hostExec.enabled=false 不挂 ibex
+PASS	镜像-categraf_ent(ksm)	1	1	
+PASS	镜像-servicemap(node)	1	1	
+PASS	镜像-ksm	1	1	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	2	2	
+PASS	hostNetwork+hostPID	2	2	
+PASS	hostfs 挂载(node agent 容器)	1	1	
+PASS	hostfs 宿主根挂载	1	1	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	3	3	
+PASS	selector 块数量且均含 instance	5	5	
+PASS	F1fix-Pod 自动滚动(创建时间变化)	changed	changed	
+PASS	F1fix-checksum 变化	changed	changed	
+PASS	F1fix-指标含 owner 标签	>=1	16948	
+PASS	F1fix-app-metrics target up	1	1	
+FAIL	F1fix-设备标签含 owner	3	2	
+PASS	F1fix-设备标签(F1 结论不依赖/见说明)	with-note	2of3	ident 复用导致，非 F1 问题
+PASS	6.1-Chart.yaml 语义一致	0	0	
+FAIL	6.1-其余文件一致	0	265	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+FAIL	6.1-其余文件一致	0	8	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+FAIL	AUDIT-A1-包SHA256	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	abad2980c6f01a75e2533c88c5c7baa1a460c050820de8840a78556c27ddd725	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.1	0.2.2-rc.1	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	33487	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.1	categraf-0.2.2-rc.1	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+PASS	6.1-其余文件一致	0	0	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	AUDIT-A1-包SHA256	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	
+FAIL	AUDIT-A2-Chart version	0.2.2-rc.1	0.2.2-rc.2	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+FAIL	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	18	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	33471	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.1	categraf-0.2.2-rc.1	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+PASS	6.1-其余文件一致	0	0	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	AUDIT-A1-包SHA256	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+FAIL	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	18	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	35109	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.2	categraf-0.2.2-rc.2	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	AUDIT-A1-包SHA256	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+FAIL	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	18	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	35074	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.2	categraf-0.2.2-rc.2	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	AUDIT-A1-包SHA256	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+FAIL	AUDIT-A6-与0.2.4渲染等价(diff 行数)	0	6	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	35074	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.2	categraf-0.2.2-rc.2	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	AUDIT-A1-包SHA256	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	7b5fb0601853fda478e0fe42ad2ec34405c8bb430e14318d1306c9947cbeeac0	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.2	0.2.2-rc.2	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4语义渲染等价(忽略纯空白行)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	35074	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.2	categraf-0.2.2-rc.2	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	1.1-version	0.2.2-rc.3	0.2.2-rc.3	
+PASS	1.1-appVersion	0.5.32	0.5.32	
+PASS	1.1-kubeVersion	'>=1.19.0-0 <1.38.0-0'	'>=1.19.0-0 <1.38.0-0'	
+FAIL	1.1-sha256	82ec6041ce9e953d9dffc5255bb51892041787d61e04e0996f0fa41f69778e5e	05f4d978f3e0c3f03aedc7831ee6fb7f10b54d12365a994c3fbb27ea05ca5f3f	
+PASS	1.1-无杂项文件	0	0	
+PASS	1.3-与0.2.4渲染等价	0	0	
+PASS	interval=0	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	interval=-1	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	batch=-1	categraf.writer.batch must be greater than or equal to 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.batch must be greater than or equal to 0  
+PASS	chanSize=0	categraf.writer.chanSize must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.chanSize must be greater than 0  
+PASS	heartbeat.interval=0	categraf.heartbeat.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.interval must be greater than 0  
+PASS	heartbeat.timeout=0	categraf.heartbeat.timeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.timeout must be greater than 0  
+PASS	heartbeat.dialTimeout=0	categraf.heartbeat.dialTimeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.dialTimeout must be greater than 0  
+PASS	customLabels 覆盖 cluster	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "cluster"  
+PASS	customLabels 覆盖 env	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "env"  
+PASS	customLabels 覆盖 categraf	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "categraf"  
+PASS	customLabels 非法键 foo-bar	is not a valid Prometheus label name	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels key "foo-bar" is not a valid Prometheus label name  
+PASS	customLabels 值为 map	must be a string, number or boolean	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels["region"] must be a string, number or boolean  
+PASS	operator 无 userToken	operator.userToken 必填	render-fail	Error: execution error at (categraf/templates/operator.yaml:2:4): operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false  
+PASS	extraScrapeConfigs 非 list	appMetrics.extraScrapeConfigs must be a list	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): appMetrics.extraScrapeConfigs must be a list  
+PASS	batch=0 回落 Node=2000	1	1	
+PASS	batch=0 回落 KSM=1000	1	1	
+PASS	toggle-默认-DaemonSet	1	1	默认安装 node agent
+PASS	toggle-默认-StatefulSet	1	1	默认安装 ksm agent
+PASS	toggle-默认-Deployment	2	2	kube-state-metrics + operator
+PASS	toggle-nodeAgent-off-DS	0	0	nodeCategraf.enabled=false 不产生 DaemonSet
+PASS	toggle-nodeAgent-off-config	0	0	对应 configmap 也消失
+PASS	toggle-ksmAgent-off-STS	0	0	ksmCategraf.enabled=false 不产生 StatefulSet
+PASS	toggle-ksm-off-appMetrics-job	0	0	ksm 关闭时 app-metrics job 随之消失
+PASS	toggle-ksm-off-coreDns-job	0	0	ksm 关闭时 coredns job 随之消失
+PASS	toggle-ksm-metrics-job-off	0	0	jobs.kubeStateMetrics=false 移除 KSM job
+PASS	toggle-ksm-off	0	0	kubeStateMetrics.enabled=false 移除 Deployment/Service
+PASS	toggle-operator-off	0	0	operator.enabled=false 不产生 operator 资源
+PASS	toggle-operator-cleanup-hook	4	4	cleanup 两开关均 true 时 4 个 hook 资源带 pre-delete
+PASS	toggle-operator-cleanup-off	0	0	cleanup 均 false 时无 hook Job
+PASS	toggle-appMetrics-off	0	0	appMetrics.enabled=false 无 app-metrics job
+PASS	toggle-coreDns-off	0	0	coreDns.enabled=false 无 coredns job
+PASS	toggle-kubeProxy-off	0	0	kubeProxy.enabled=false 无 kube-proxy 输入
+PASS	toggle-networkPlugin-off	0	0	calico/cilium 都关则无对应 job
+PASS	toggle-controlPlane-on	4	4	controlPlane.enabled=true 增加 4 个控制平面 job
+PASS	toggle-cadvisor-off	0	0	inputs.cadvisor=false 去掉 cadvisor 输入
+PASS	toggle-nodeExporter-off	0	0	inputs.nodeExporter=false 去掉 node_exporter 输入
+PASS	toggle-hostExec-off	0	0	hostExec.enabled=false 不挂 ibex
+PASS	镜像-categraf_ent(ksm)	1	1	
+PASS	镜像-servicemap(node)	1	1	
+PASS	镜像-ksm	1	1	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	2	2	
+PASS	hostNetwork+hostPID	2	2	
+PASS	hostfs 挂载(node agent 容器)	1	1	
+PASS	hostfs 宿主根挂载	1	1	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	3	3	
+PASS	selector 块数量且均含 instance	5	5	
+PASS	1.1-version	0.2.2-rc.3	0.2.2-rc.3	
+PASS	1.1-appVersion	0.5.32	0.5.32	
+PASS	1.1-kubeVersion	'>=1.19.0-0 <1.38.0-0'	'>=1.19.0-0 <1.38.0-0'	
+PASS	1.1-sha256	05f4d978f3e0c3f03aedc7831ee6fb7f10b54d12365a994c3fbb27ea05ca5f3f	05f4d978f3e0c3f03aedc7831ee6fb7f10b54d12365a994c3fbb27ea05ca5f3f	
+PASS	1.1-无杂项文件	0	0	
+PASS	1.3-与0.2.4渲染等价	0	0	
+PASS	interval=0	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	interval=-1	categraf.config.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.config.interval must be greater than 0  
+PASS	batch=-1	categraf.writer.batch must be greater than or equal to 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.batch must be greater than or equal to 0  
+PASS	chanSize=0	categraf.writer.chanSize must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.writer.chanSize must be greater than 0  
+PASS	heartbeat.interval=0	categraf.heartbeat.interval must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.interval must be greater than 0  
+PASS	heartbeat.timeout=0	categraf.heartbeat.timeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.timeout must be greater than 0  
+PASS	heartbeat.dialTimeout=0	categraf.heartbeat.dialTimeout must be greater than 0	render-fail	Error: execution error at (categraf/templates/node-categraf.yaml:2:4): categraf.heartbeat.dialTimeout must be greater than 0  
+PASS	customLabels 覆盖 cluster	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "cluster"  
+PASS	customLabels 覆盖 env	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "env"  
+PASS	customLabels 覆盖 categraf	cannot override reserved label	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels cannot override reserved label "categraf"  
+PASS	customLabels 非法键 foo-bar	is not a valid Prometheus label name	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels key "foo-bar" is not a valid Prometheus label name  
+PASS	customLabels 值为 map	must be a string, number or boolean	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): categraf.customLabels["region"] must be a string, number or boolean  
+PASS	operator 无 userToken	operator.userToken 必填	render-fail	Error: execution error at (categraf/templates/operator.yaml:2:4): operator.enabled=true 时 operator.userToken 必填；不需要清理请设置 operator.enabled=false  
+PASS	extraScrapeConfigs 非 list	appMetrics.extraScrapeConfigs must be a list	render-fail	Error: execution error at (categraf/templates/operator.yaml:106:28): appMetrics.extraScrapeConfigs must be a list  
+PASS	batch=0 回落 Node=2000	1	1	
+PASS	batch=0 回落 KSM=1000	1	1	
+PASS	toggle-默认-DaemonSet	1	1	默认安装 node agent
+PASS	toggle-默认-StatefulSet	1	1	默认安装 ksm agent
+PASS	toggle-默认-Deployment	2	2	kube-state-metrics + operator
+PASS	toggle-nodeAgent-off-DS	0	0	nodeCategraf.enabled=false 不产生 DaemonSet
+PASS	toggle-nodeAgent-off-config	0	0	对应 configmap 也消失
+PASS	toggle-ksmAgent-off-STS	0	0	ksmCategraf.enabled=false 不产生 StatefulSet
+PASS	toggle-ksm-off-appMetrics-job	0	0	ksm 关闭时 app-metrics job 随之消失
+PASS	toggle-ksm-off-coreDns-job	0	0	ksm 关闭时 coredns job 随之消失
+PASS	toggle-ksm-metrics-job-off	0	0	jobs.kubeStateMetrics=false 移除 KSM job
+PASS	toggle-ksm-off	0	0	kubeStateMetrics.enabled=false 移除 Deployment/Service
+PASS	toggle-operator-off	0	0	operator.enabled=false 不产生 operator 资源
+PASS	toggle-operator-cleanup-hook	4	4	cleanup 两开关均 true 时 4 个 hook 资源带 pre-delete
+PASS	toggle-operator-cleanup-off	0	0	cleanup 均 false 时无 hook Job
+PASS	toggle-appMetrics-off	0	0	appMetrics.enabled=false 无 app-metrics job
+PASS	toggle-coreDns-off	0	0	coreDns.enabled=false 无 coredns job
+PASS	toggle-kubeProxy-off	0	0	kubeProxy.enabled=false 无 kube-proxy 输入
+PASS	toggle-networkPlugin-off	0	0	calico/cilium 都关则无对应 job
+PASS	toggle-controlPlane-on	4	4	controlPlane.enabled=true 增加 4 个控制平面 job
+PASS	toggle-cadvisor-off	0	0	inputs.cadvisor=false 去掉 cadvisor 输入
+PASS	toggle-nodeExporter-off	0	0	inputs.nodeExporter=false 去掉 node_exporter 输入
+PASS	toggle-hostExec-off	0	0	hostExec.enabled=false 不挂 ibex
+PASS	镜像-categraf_ent(ksm)	1	1	
+PASS	镜像-servicemap(node)	1	1	
+PASS	镜像-ksm	1	1	
+PASS	镜像-operator(operator Deployment+cleanup Job 各 1)	2	2	
+PASS	hostNetwork+hostPID	2	2	
+PASS	hostfs 挂载(node agent 容器)	1	1	
+PASS	hostfs 宿主根挂载	1	1	
+PASS	ClusterRole 数量(ksm/operator/node-agent)	3	3	
+PASS	selector 块数量且均含 instance	5	5	
+PASS	F5-apiserver 可采集(up=1)	1	1	
+FAIL	F5-controller-manager 因 master 监听见 127.0.0.1 不可采	absent	0	
+FAIL	F5-scheduler 因 master 监听见 127.0.0.1 不可采	absent	0	
+FAIL	F5-etcd 因 master 监听见 127.0.0.1 不可采	absent	0	
+PASS	F5-controller-manager 可发现(up=0，等待放开 master 监听)	0	0	目标发现正常，抓取被 127.0.0.1 监听限制拒绝
+PASS	F5-scheduler 可发现(up=0，等待放开 master 监听)	0	0	同上
+PASS	F5-etcd 可发现(up=0，等待放开 master 监听)	0	0	同上
+PASS	3.1-设备数	3	3	
+PASS	3.1-全部 target_up=2	3	3	
+PASS	3.1-心跳年龄<=60s(age=0s)	>=0	60	beat_time 距今不超过 60s
+PASS	3.1-heartbeatGid=2 生效(group_objs)	2	2	
+PASS	3.1-agent 版本	ent-v0.5.32	ent-v0.5.32	
+PASS	3.1-customLabels owner 落库	platform	platform	
+PASS	3.1-customLabels environment 落库	test	test	
+PASS	3.2-up 全为 1	0	0	
+PASS	3.2-series 总量	>=12000	17637	
+PASS	3.2-node_exporter 节点数	>=2	4	
+PASS	3.2-kube-state-metrics 指标	>=1	78	
+PASS	3.2-app-metrics target up	1	1	
+PASS	3.2-cadvisor 容器指标	>=1	264	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+PASS	6.1-其余文件一致	0	0	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	AUDIT-A1-包SHA256	05f4d978f3e0c3f03aedc7831ee6fb7f10b54d12365a994c3fbb27ea05ca5f3f	05f4d978f3e0c3f03aedc7831ee6fb7f10b54d12365a994c3fbb27ea05ca5f3f	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.3	0.2.2-rc.3	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4语义渲染等价(忽略纯空白行)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	69885	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.3	categraf-0.2.2-rc.3	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	6.1-Chart.yaml 语义一致	0	0	
+PASS	6.1-其余文件一致	0	0	
+PASS	6.1-包内无 .DS_Store/.git	0	0	
+PASS	6.2-show values 与仓库一致(忽略空行)	0	0	
+PASS	6.3-远端 lint 0 failed	1	1	
+PASS	6.3-Helm3 下 1.19 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.37.2 可通过	OK	OK	
+PASS	6.3-Helm3 下 1.38 被拒	REJECT	REJECT	
+PASS	6.4-预发布不更新 latest 提示	1	1	
+PASS	6.4-预发布不调用 oras	0	0	
+PASS	6.4-正式版调用 oras 打 latest	1	1	
+PASS	AUDIT-A1-包SHA256	633fd00acec54ba298702cd4f656405f7a7d1e444161f9c214b2158a68d7a00d	633fd00acec54ba298702cd4f656405f7a7d1e444161f9c214b2158a68d7a00d	
+PASS	AUDIT-A2-Chart version	0.2.2-rc.3	0.2.2-rc.3	
+PASS	AUDIT-A3-kubeVersion 1.19 通过	OK	OK	
+PASS	AUDIT-A4-kubeVersion 1.38 拒绝	REJECT	REJECT	
+PASS	AUDIT-A5-interval=0 被拒	1	1	
+PASS	AUDIT-A6-与0.2.4语义渲染等价(忽略纯空白行)	0	0	
+PASS	AUDIT-A7-设备 target_up=2 数量	3	3	
+PASS	AUDIT-A8-指标含 owner=platform	>=1	69885	
+PASS	AUDIT-A9-app-metrics target up	1	1	
+PASS	AUDIT-A10-Release chart	categraf-0.2.2-rc.3	categraf-0.2.2-rc.3	
+PASS	AUDIT-A11-cleanup 删除 3 条设备记录	3	3	
+PASS	AUDIT-A12-operator 可 list nodes	yes	yes	
+PASS	AUDIT-A13-集群版本 1.28.2	v1.28.2	v1.28.2	
+PASS	C7f-kube_pod_info 停止上报(job过滤后)	0	0	原FAIL为测试Pod自带KSM指标，非Chart缺陷
+PASS	rc3-卸载后 release 清空	0	0	
+PASS	rc3-卸载后本集群设备清零	0	0	
+PASS	rc3-卸载不影响其它集群设备	3	3	
+PASS	rc3-重装后设备数	3	3	
+PASS	rc3-重装后设备全部 online	3	3	
+PASS	rc3-重装后指标恢复	>=10000	17774	
+PASS	rc3-重装后 up 无异常	0	0	
+PASS	rc3-重装后 customLabels 生效	1	1	
+PASS	A1-apiserver up=1	1	1	
+PASS	A1-kube-controller-manager up=1	1	1	
+PASS	A1-kube-scheduler up=1	1	1	
+FAIL	A1-etcd up=1	1	0	
+FAIL	A1-etcd 指标落库	>=1	0	
+PASS	A1-apiserver 指标落库	>=1	351	

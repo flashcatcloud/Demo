@@ -1,0 +1,161 @@
+[
+  {
+    "id": 9,
+    "group_id": 0,
+    "group_objs": [
+      {
+        "id": 2,
+        "name": "K8S",
+        "label_enable": 0,
+        "label_value": "",
+        "create_at": 1793677208,
+        "create_by": "root",
+        "update_at": 1793677208,
+        "update_by": "root",
+        "update_by_nickname": "",
+        "user_groups": null
+      }
+    ],
+    "ident": "k8s-flashcat-test-20261029-categraf-ksm-0",
+    "note": "",
+    "tags": [],
+    "tags_maps": {
+      "categraf": "ksmAgent",
+      "cluster": "k8s-flashcat-test-20261029",
+      "env": "test",
+      "environment": "test",
+      "owner": "platform"
+    },
+    "update_at": 1793691208,
+    "host_ip": "10.244.1.137",
+    "agent_version": "ent-v0.5.32",
+    "engine_name": "Default_Alert_Engine",
+    "os": "linux",
+    "host_tags": [
+      "categraf=ksmAgent",
+      "cluster=k8s-flashcat-test-20261029",
+      "env=test",
+      "environment=test",
+      "owner=platform"
+    ],
+    "beat_time": 1793691257,
+    "unixtime": 1793691256404,
+    "offset": -16,
+    "target_up": 2,
+    "mem_util": 13.532746279916019,
+    "cpu_num": 4,
+    "cpu_util": 0.836820083730412,
+    "arch": "amd64",
+    "remote_addr": "192.168.31.6",
+    "group_ids": [
+      2
+    ],
+    "group_names": null
+  },
+  {
+    "id": 7,
+    "group_id": 0,
+    "group_objs": [
+      {
+        "id": 2,
+        "name": "K8S",
+        "label_enable": 0,
+        "label_value": "",
+        "create_at": 1793677208,
+        "create_by": "root",
+        "update_at": 1793677208,
+        "update_by": "root",
+        "update_by_nickname": "",
+        "user_groups": null
+      }
+    ],
+    "ident": "k8s-node1",
+    "note": "",
+    "tags": [],
+    "tags_maps": {
+      "categraf": "nodeAgent",
+      "cluster": "k8s-flashcat-test-20261029",
+      "env": "test",
+      "environment": "test",
+      "owner": "platform"
+    },
+    "update_at": 1793690659,
+    "host_ip": "192.168.31.5",
+    "agent_version": "ent-v0.5.32",
+    "engine_name": "Default_Alert_Engine",
+    "os": "linux",
+    "host_tags": [
+      "categraf=nodeAgent",
+      "cluster=k8s-flashcat-test-20261029",
+      "env=test",
+      "environment=test",
+      "owner=platform"
+    ],
+    "beat_time": 1793691256,
+    "unixtime": 1793691255598,
+    "offset": -25,
+    "target_up": 2,
+    "mem_util": 16.34843736096418,
+    "cpu_num": 4,
+    "cpu_util": 1.6820857864108745,
+    "arch": "amd64",
+    "remote_addr": "192.168.31.5",
+    "group_ids": [
+      2
+    ],
+    "group_names": null
+  },
+  {
+    "id": 8,
+    "group_id": 0,
+    "group_objs": [
+      {
+        "id": 2,
+        "name": "K8S",
+        "label_enable": 0,
+        "label_value": "",
+        "create_at": 1793677208,
+        "create_by": "root",
+        "update_at": 1793677208,
+        "update_by": "root",
+        "update_by_nickname": "",
+        "user_groups": null
+      }
+    ],
+    "ident": "k8s-node2",
+    "note": "",
+    "tags": [],
+    "tags_maps": {
+      "categraf": "nodeAgent",
+      "cluster": "k8s-flashcat-test-20261029",
+      "env": "test",
+      "environment": "test",
+      "owner": "platform"
+    },
+    "update_at": 1793690666,
+    "host_ip": "192.168.31.6",
+    "agent_version": "ent-v0.5.32",
+    "engine_name": "Default_Alert_Engine",
+    "os": "linux",
+    "host_tags": [
+      "categraf=nodeAgent",
+      "cluster=k8s-flashcat-test-20261029",
+      "env=test",
+      "environment=test",
+      "owner=platform"
+    ],
+    "beat_time": 1793691257,
+    "unixtime": 1793691256866,
+    "offset": -14,
+    "target_up": 2,
+    "mem_util": 13.532746279916019,
+    "cpu_num": 4,
+    "cpu_util": 0.921273031830491,
+    "arch": "amd64",
+    "remote_addr": "192.168.31.6",
+    "group_ids": [
+      2
+    ],
+    "group_names": null
+  }
+]

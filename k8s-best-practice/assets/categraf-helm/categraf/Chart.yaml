@@ -2,9 +2,11 @@ apiVersion: v2
 name: categraf
 description: K8S 指标监控采集 —— 基于 Categraf (DaemonSet + StatefulSet) 与 kube-state-metrics
 type: application
-version: 0.2.1
-appVersion: "1.0.0"
-kubeVersion: ">=1.21.0-0 <1.32.0-0"
+version: 0.2.3
+appVersion: "0.5.45"
+# 下限：Chart 只使用 core/v1、apps/v1、rbac.authorization.k8s.io/v1、batch/v1(Job)，均为 1.9 起稳定；
+# 这里按 1.19 作为支持底线。上限：跟随当前最新 Kubernetes 稳定版（本行维护规则见 Chart README）。
+kubeVersion: ">=1.19.0-0 <1.38.0-0"
 keywords:
   - categraf
   - nightingale

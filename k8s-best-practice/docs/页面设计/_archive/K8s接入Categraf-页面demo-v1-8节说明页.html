@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>接入 Kubernetes · Categraf（页面 Demo）</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --accent-bg:#eff6ff; --warn:#b45309; --warn-bg:#fffbeb;
+    --ok:#047857; --ok-bg:#ecfdf5; --code-bg:#0b1220; --code-fg:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;}
+  a{color:var(--accent);text-decoration:none}
+  code{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;
+    background:#f3f4f6;border:1px solid var(--line);border-radius:4px;padding:.5px 4px}
+  pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit}
+
+  /* header */
+  header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);
+    backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--line)}
+  .hwrap{max-width:1180px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:16px}
+  .hwrap h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  .hwrap .sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .ver{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+  .ver b{color:var(--text);font-weight:600}
+  .pill{background:#f3f4f6;border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 80px}
+
+  /* mode selector */
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .mode{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;cursor:pointer;transition:.16s;font:inherit;color:inherit}
+  .mode:hover{border-color:#c7d2fe}
+  .mode[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-bg);
+    box-shadow:0 0 0 3px rgba(37,99,235,.09)}
+  .mode .t{display:flex;align-items:center;gap:8px;font-weight:640;font-size:13.5px}
+  .mode .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px;background:#fff}
+  .mode[aria-pressed="true"] .tag{border-color:#bfdbfe;color:var(--accent)}
+  .mode .d{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+  /* layout */
+  .grid{display:grid;grid-template-columns:284px 1fr;gap:20px;align-items:start}
+  aside{position:sticky;top:84px;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .card h2{margin:0;padding:13px 16px;font-size:13px;font-weight:650;border-bottom:1px solid var(--line)}
+
+  /* vars */
+  .vars{padding:6px 14px 14px}
+  .field{display:flex;flex-direction:column;gap:4px;padding:7px 0}
+  .field label{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .field label b{color:var(--text);font-weight:600;font-size:12px}
+  .field input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;
+    font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text);background:#fcfcfd}
+  .field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1);background:#fff}
+  .req{color:#dc2626;font-size:11px}
+  .hint{font-size:11px;color:var(--muted);padding:8px 14px 12px;border-top:1px dashed var(--line)}
+
+  /* toc */
+  .toc{padding:6px 8px 10px}
+  .toc button{display:flex;gap:9px;align-items:center;width:100%;background:none;border:0;
+    padding:7px 8px;border-radius:7px;cursor:pointer;font:inherit;color:var(--text);text-align:left}
+  .toc button:hover{background:#f9fafb}
+  .toc .n{width:19px;height:19px;border-radius:50%;background:#f3f4f6;color:var(--muted);
+    font-size:11px;display:grid;place-items:center;flex:0 0 auto;font-weight:600}
+  .toc button.done .n{background:var(--ok-bg);color:var(--ok)}
+  .toc .lbl{font-size:12.5px;color:#374151}
+  .prog{padding:9px 16px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+  .bar{height:5px;border-radius:99px;background:#eef0f3;overflow:hidden;margin:0 16px 12px}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#34d399,#10b981);transition:.3s}
+
+  /* sections */
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:14px;scroll-margin-top:84px}
+  section>h2{margin:0 0 4px;font-size:16px;font-weight:650;display:flex;align-items:center;gap:10px}
+  section>h2 .n{width:24px;height:24px;border-radius:50%;background:var(--accent-bg);color:var(--accent);
+    font-size:12.5px;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
+  .purpose{color:var(--muted);font-size:12.5px;margin:0 0 14px 34px}
+  h3{font-size:13px;margin:18px 0 8px;color:#374151;font-weight:650}
+  h3:first-of-type{margin-top:4px}
+  p{margin:9px 0}
+  .small{font-size:12.5px;color:var(--muted)}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#f9fafb;font-weight:620;color:#374151;white-space:nowrap}
+  td code{font-size:11.5px}
+  tbody tr:hover td{background:#fcfcfd}
+
+  ul{margin:8px 0;padding-left:20px}
+  li{margin:4px 0}
+  ul.tight{margin:10px 0;padding-left:19px}
+  ul.tight li{margin:6px 0}
+
+  /* 折叠明细：正文只留 3~4 条，细节收进来 */
+  details{border:1px solid var(--line);border-radius:9px;margin:12px 0;background:#fcfcfd}
+  details summary{cursor:pointer;padding:9px 13px;font-size:12.5px;color:#4b5563;font-weight:600;list-style:none;user-select:none}
+  details summary::-webkit-details-marker{display:none}
+  details summary::before{content:"▸";display:inline-block;width:14px;color:var(--muted);font-weight:400}
+  details[open] summary{border-bottom:1px solid var(--line)}
+  details[open] summary::before{content:"▾"}
+  details .dbody{padding:2px 13px 13px}
+  details .dbody table{margin:2px 0}
+  details .dbody p{margin:8px 0}
+
+  .code{border:1px solid #1e293b;border-radius:10px;overflow:hidden;margin:10px 0;background:var(--code-bg)}
+  .code .bar2{display:flex;align-items:center;gap:10px;padding:7px 12px;background:#111c34;
+    border-bottom:1px solid #1e293b;font-size:11.5px;color:#94a3b8;font-family:ui-monospace,Menlo,monospace}
+  .code .bar2 button{margin-left:auto;background:#1e293b;color:#cbd5e1;border:1px solid #334155;
+    border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-family:inherit}
+  .code .bar2 button:hover{background:#243449;color:#fff}
+  .code pre{margin:0;padding:12px 14px;overflow-x:auto;color:var(--code-fg);
+    font:12.5px/1.62 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  .callout{display:flex;gap:10px;border-radius:9px;padding:11px 13px;margin:12px 0;font-size:12.5px;line-height:1.6}
+  .callout.info{background:var(--accent-bg);border:1px solid #dbeafe;color:#1e3a8a}
+  .callout.warn{background:var(--warn-bg);border:1px solid #fde68a;color:#78350f}
+  .callout.ok{background:var(--ok-bg);border:1px solid #a7f3d0;color:#065f46}
+  .callout .ic{font-weight:700;flex:0 0 auto}
+  .callout code{background:rgba(255,255,255,.7);border-color:rgba(0,0,0,.08)}
+
+  .checks{margin:12px 0 2px;border:1px dashed var(--line);border-radius:9px;padding:8px 12px 10px;background:#fcfcfd}
+  .checks .ct{font-size:11.5px;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}
+  .checks label{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12.5px;cursor:pointer}
+  .checks input{margin-top:3px;accent-color:var(--accent)}
+
+  footer{max-width:1180px;margin:0 auto;padding:0 24px;color:var(--muted);font-size:12px}
+  [hidden]{display:none !important}
+  td.res span{display:block}
+  td.res span + span{margin-top:5px;padding-top:5px;border-top:1px dashed var(--line)}
+  @media (max-width:960px){
+    .modes{grid-template-columns:1fr}
+    .grid{grid-template-columns:1fr}
+    aside{position:static}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div>
+      <h1>接入 Kubernetes</h1>
+      <div class="sub">选择部署形态，按指引完成 Categraf 接入 · 约 10 分钟</div>
+    </div>
+    <div class="ver">
+      <span class="pill">Chart <b id="verChart">{{chartVersion}}</b></span>
+      <span class="pill">Categraf <b>0.5.45</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="modes" role="group" aria-label="部署形态">
+    <button class="mode" data-mode="ds" aria-pressed="false">
+      <span class="t">节点采集 <span class="tag">DaemonSet</span></span>
+      <span class="d">每节点一个 Categraf，采主机、kubelet/cAdvisor、kube-proxy，支持任务通道与服务拓扑。</span>
+    </button>
+    <button class="mode" data-mode="sts" aria-pressed="false">
+      <span class="t">集群与应用采集 <span class="tag">StatefulSet</span></span>
+      <span class="d">集群级一个 Categraf，采 KSM、应用指标与 K8s 组件，统一出口不重复。</span>
+    </button>
+    <button class="mode" data-mode="both" aria-pressed="true">
+      <span class="t">两者都要 <span class="tag">推荐</span></span>
+      <span class="d">同一 Release 同时部署，一次装完覆盖最全。</span>
+    </button>
+  </div>
+
+  <div class="grid">
+
+    <aside>
+      <div class="card">
+        <h2>左侧变量（改这里，右侧实时替换）</h2>
+        <div class="vars">
+          <div class="field">
+            <label><b>服务端地址</b><span class="req">必填</span></label>
+            <input data-var="serverAddr" value="http://flashcat.example.com:19000" />
+          </div>
+          <div class="field">
+            <label><b>集群名</b><span class="req">必填</span></label>
+            <input data-var="clusterName" value="demo-cluster" />
+          </div>
+          <div class="field">
+            <label><b>命名空间</b></label>
+            <input data-var="namespace" value="flashcat" />
+          </div>
+          <div class="field">
+            <label><b>Release 名</b></label>
+            <input data-var="release" value="categraf" />
+          </div>
+          <div class="field">
+            <label><b>环境</b></label>
+            <input data-var="env" value="prod" />
+          </div>
+          <div class="field">
+            <label><b>业务组 GID</b></label>
+            <input data-var="gid" value="2" />
+          </div>
+          <div class="field">
+            <label><b>Chart 版本</b></label>
+            <input data-var="chartVersion" value="0.2.2" />
+          </div>
+          <div class="field">
+            <label><b>镜像前缀</b></label>
+            <input data-var="registry" value="registry.flashcat.cloud/public" />
+          </div>
+          <div class="field">
+            <label><b>API Token</b><span class="req">开 Operator 必填</span></label>
+            <input data-var="token" value="your-flashcat-token" />
+          </div>
+          <div class="field">
+            <label><b>采集间隔（秒）</b></label>
+            <input data-var="interval" value="15" />
+          </div>
+        </div>
+        <div class="hint">命令块里的值是「复制时快照」，改动变量后请重新复制。</div>
+      </div>
+
+      <div class="card">
+        <h2>内容目录</h2>
+        <div class="toc" id="toc"></div>
+        <div class="bar"><i id="bar"></i></div>
+        <div class="prog"><span>验收项完成度</span><span id="prog">0 / 0</span></div>
+      </div>
+    </aside>
+
+    <main id="content">
+
+      <!-- ===================== 1 ===================== -->
+      <section id="s1" data-sec="1">
+        <h2><span class="n">1</span>相关依赖</h2>
+        <p class="purpose">要准备的只有 Chart 和镜像，都已经打包好了。</p>
+
+        <p>依赖随 Flashcat 离线包提供，内网导入即可安装，<b>不需要任何采集 SDK</b>。历史版本到<a href="https://flashcat.cloud/download" target="_blank" rel="noreferrer">官网下载页</a>取。</p>
+
+        <ul class="tight">
+          <li><b>Chart</b>：<code>categraf {{chartVersion}}</code></li>
+          <li data-modes="ds"><b>节点镜像</b>：<code>categraf_ent:servicemap-v0.5.45</code></li>
+          <li data-modes="sts"><b>集群镜像</b>：<code>categraf_ent:v0.5.45</code>、<code>kube-state-metrics:v2.19.1</code></li>
+          <li><b>客户端</b>：Helm 3 及以上</li>
+        </ul>
+
+        <details>
+          <summary>依赖明细（可选组件、镜像地址、版本）</summary>
+          <div class="dbody">
+            <table>
+              <thead><tr><th>依赖</th><th>版本</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td>categraf Helm Chart</td><td><code>{{chartVersion}}</code></td><td>OCI <code>oci://registry.flashcat.cloud/public/charts/categraf</code>；离线包内含 <code>.tgz</code></td></tr>
+                <tr data-modes="ds"><td>Node Agent 镜像</td><td><code>categraf_ent:servicemap-v0.5.45</code></td><td>节点采集（含服务拓扑能力）</td></tr>
+                <tr data-modes="sts"><td>KSM Agent 镜像</td><td><code>categraf_ent:v0.5.45</code></td><td>集群级采集，<b>与节点镜像不是同一个</b></td></tr>
+                <tr data-modes="sts"><td>kube-state-metrics</td><td><code>kube-state-metrics:v2.19.1</code></td><td>KSM 指标的暴露方</td></tr>
+                <tr><td>categraf-operator</td><td><code>categraf-operator:0.0.7</code></td><td>可选：清理节点删除 / 卸载后的残留设备</td></tr>
+                <tr><td>采集 SDK / 语言 Agent</td><td>无</td><td>本方案不需要</td></tr>
+                <tr data-modes="sts"><td>集群级 RBAC</td><td>Chart 内置</td><td>list/watch pods、services、endpoints、nodes</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <div class="callout info">
+          <span class="ic">i</span>
+          <div>命令里写死版本号，不要用 <code>latest</code>；离线导入的镜像 tag 也不要带 <code>latest</code>。</div>
+        </div>
+      </section>
+
+<!-- ===================== 2 ===================== -->
+      <section id="s2" data-sec="2">
+        <h2><span class="n">2</span>运行环境要求</h2>
+        <p class="purpose">三条硬要求，不满足会在安装或启动时失败。</p>
+
+        <ul class="tight">
+          <li><b>Kubernetes</b> 1.19 ～ 1.37，<b>Helm</b> 3 及以上</li>
+          <li data-modes="ds"><b>节点</b>为 Linux，命名空间允许特权容器（<code>privileged</code> + <code>hostNetwork</code>）</li>
+          <li data-modes="sts">具备<b>集群级只读权限</b>（list/watch pods、services、endpoints、nodes）</li>
+          <li>能访问服务地址 <code>{{serverAddr}}</code></li>
+        </ul>
+
+        <div class="callout warn">
+          <span class="ic">!</span>
+          <div><b>不满足此环境要求，请联系 Flashcat 技术人员提供支持。</b></div>
+        </div>
+
+        <details>
+          <summary>完整要求（更多限制与资源规格）</summary>
+          <div class="dbody">
+            <table>
+              <thead><tr><th>项</th><th>要求</th><th>不满足的后果</th></tr></thead>
+              <tbody>
+                <tr><td>Kubernetes</td><td>≥ 1.19 且 &lt; 1.38</td><td>Helm 直接拒绝安装</td></tr>
+                <tr><td>Helm</td><td>≥ 3.x</td><td>无法安装</td></tr>
+                <tr data-modes="ds"><td>节点 OS</td><td>Linux（cgroup v1 / v2）</td><td>不支持 Windows 节点</td></tr>
+                <tr data-modes="ds"><td>Pod Security</td><td>命名空间不能是 <code>baseline</code> / <code>restricted</code>，建议 <code>privileged</code></td><td>hostNetwork / hostPID / privileged 被拒，Pod 起不来</td></tr>
+                <tr data-modes="ds"><td>节点 taint</td><td>默认只容忍 <code>NoSchedule</code></td><td>带 <code>NoExecute</code> taint 的节点不会调度</td></tr>
+                <tr data-modes="sts"><td>K8s API 权限</td><td>允许创建 ClusterRole / ClusterRoleBinding</td><td>无法发现 target</td></tr>
+                <tr data-modes="sts"><td>副本数</td><td>固定 <code>replicas: 1</code></td><td>多副本会重复抓取、指标重复</td></tr>
+                <tr><td>出向网络</td><td>到 <code>{{serverAddr}}</code> 可达</td><td>指标写不进、设备一直离线</td></tr>
+                <tr data-modes="ds"><td>入向端口</td><td><b>无需开放</b>（push 模式）</td><td>—</td></tr>
+                <tr><td>单实例资源</td><td class="res"><span data-modes="ds">DaemonSet：requests 200m / 512Mi，limits 2000m / 2Gi</span><span data-modes="sts">StatefulSet：requests 500m / 512Mi，limits 1000m / 1.5Gi</span></td><td>资源紧张时被限流或驱逐</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+<!-- ===================== 3 ===================== -->
+      <section id="s3" data-sec="3">
+        <h2><span class="n">3</span>功能说明</h2>
+        <p class="purpose">装完能拿到什么，一眼看完。</p>
+
+        <div data-modes="ds">
+          <p>每台节点部署一个 Categraf，负责四件事：</p>
+          <ul class="tight">
+            <li><b>主机指标</b>：CPU、内存、磁盘、网络、负载，默认用 <code>node_exporter</code> 插件</li>
+            <li><b>容器与 kubelet</b>：容器资源用量，以及 kubelet 自身状态</li>
+            <li><b>kube-proxy</b>：转发规则数量与同步耗时</li>
+            <li><b>运维能力</b>：任务通道（向节点下发命令）、服务拓扑（服务间调用关系）</li>
+          </ul>
+          <p class="small">后两项需要在控制台开启，其余默认开启。</p>
+        </div>
+
+        <div data-modes="sts">
+          <p>集群里部署一个 Categraf（固定 1 副本），负责四件事：</p>
+          <ul class="tight">
+            <li><b>K8s 对象状态</b>：Pod、Deployment、Service、Node、PVC 的期望值与实际值</li>
+            <li><b>应用指标 · 规范型</b>：Pod 加 <code>prometheus.io/*</code> 注解即自动纳管，新增服务不用改配置</li>
+            <li><b>应用指标 · 非规范型</b>：不能改注解的中间件，加一段抓取配置即可，业务 Pod 不用动</li>
+            <li><b>组件指标</b>：CoreDNS、Calico / Cilium，可选控制平面</li>
+          </ul>
+          <p class="small">主机、kubelet、kube-proxy 不在此模式，需要 DaemonSet。</p>
+        </div>
+
+        <details data-modes="sts">
+          <summary>两类应用分别怎么接（能改注解 / 不能改注解）</summary>
+          <div class="dbody">
+            <p><b>能改注解</b>：在 Pod 模板加 <code>prometheus.io/scrape: "true"</code> 和端口，自动纳管；以后新增服务零配置。</p>
+            <p><b>不能改注解</b>：在 <code>appMetrics.extraScrapeConfigs</code> 加一条抓取规则（按 namespace / service / label 匹配），业务 Pod 不用重启。</p>
+            <p class="small">两类可以并存；同一个服务只选一种，避免重复采集。</p>
+          </div>
+        </details>
+      </section>
+
+<!-- ===================== 4 ===================== -->
+      <section id="s4" data-sec="4">
+        <h2><span class="n">4</span>配置文件</h2>
+        <p class="purpose">可粘贴的 values、渲染后的样子，以及变量到底替换在哪。</p>
+
+        <div class="callout info" data-modes="both">
+          <span class="ic">i</span>
+          <div><b>组合部署</b>：把下面「节点级」与「集群与应用级」两段 values <b>合并成同一个 my-values.yaml</b>，重复的 <code>categraf:</code>、<code>operator:</code> 块各保留一份即可。</div>
+        </div>
+
+        <h3 data-modes="both">节点级（DaemonSet）</h3>
+        <div data-modes="ds">
+          <h3>① values（已代入左侧变量）</h3>
+          <div class="code">
+            <div class="bar2">my-values.yaml<button data-copy>复制</button></div>
+            <pre>categraf:
+  serverAddr: "{{serverAddr}}"
+  clusterName: "{{clusterName}}"
+  env: "{{env}}"
+  heartbeatGid: "{{gid}}"
+  config:
+    interval: {{interval}}
+
+operator:
+  enabled: true
+  userToken: "{{token}}"
+
+nodeCategraf:
+  enabled: true
+  hostname: nodeName      # ident = 节点名；服务拓扑要求不可改
+  securityContext:
+    privileged: true
+  hostExec:
+    enabled: true         # 任务通道
+  inputs:
+    cadvisor: true
+    nodeExporter: true
+    hostNative:
+      enabled: true
+
+<span data-single="ds"># 本模式不部署集群级组件（组合部署时删掉这三段）
+ksmCategraf:
+  enabled: false
+kubeStateMetrics:
+  enabled: false
+appMetrics:
+  enabled: false
+coreDns:
+  enabled: false
+networkPlugin:
+  calico:
+    enabled: false
+  cilium:
+    enabled: false</span></pre>
+          </div>
+
+          <h3>② 渲染后的 config.toml（只读预览）</h3>
+          <div class="code">
+            <div class="bar2">config.toml<button data-copy>复制</button></div>
+            <pre>[global]
+hostname = "${HOSTNAME}"          # 取值 = spec.nodeName
+interval = {{interval}}
+providers = ["local", "http", "rmq"]   # 支持控制台远程下发
+
+[global.labels]
+env = "{{env}}"
+cluster = "{{clusterName}}"
+categraf = "nodeAgent"
+
+[global.n9e_server]
+address = "{{serverAddr}}"
+
+[heartbeat]
+enable = true
+url = "{{serverAddr}}/v1/n9e-plus/heartbeat"</pre>
+          </div>
+
+          <div class="callout warn">
+            <span class="ic">!</span>
+            <div><b>启动参数不可替换</b>：容器固定 <code>args: ["-configs", "/opt/categraf/conf"]</code>。可变的只有 values → ConfigMap → 挂载文件；<code>config.toml</code> 是单文件挂载，不支持整目录覆盖。</div>
+          </div>
+        </div>
+
+        <h3 data-modes="both">集群与应用级（StatefulSet）</h3>
+        <div data-modes="sts">
+          <h3>① values（已代入左侧变量）</h3>
+          <div class="code">
+            <div class="bar2">my-values.yaml<button data-copy>复制</button></div>
+            <pre>categraf:
+  serverAddr: "{{serverAddr}}"
+  clusterName: "{{clusterName}}"
+  env: "{{env}}"
+
+operator:
+  enabled: true
+  userToken: "{{token}}"
+
+ksmCategraf:
+  enabled: true
+  replicas: 1                   # 固定 1，多副本会重复抓取
+  jobs:
+    kubeStateMetrics: true
+
+kubeStateMetrics:
+  enabled: true
+
+appMetrics:
+  enabled: true
+  defaultJob:
+    enabled: true               # 场景一：规范注解自动发现
+  extraScrapeConfigs: []        # 场景二：不合规范时在这里逐条加
+
+<span data-single="sts"># 本模式不部署节点级组件（组合部署时删掉这两段）
+nodeCategraf:
+  enabled: false
+kubeProxy:
+  enabled: false</span></pre>
+          </div>
+
+          <h3>② 场景一：业务侧要打的注解（给研发看）</h3>
+          <div class="code">
+            <div class="bar2">Deployment / spec.template.metadata<button data-copy>复制</button></div>
+            <pre>metadata:
+  labels:
+    app: order-service      # → 指标标签 service
+    team: platform          # → 指标标签 team
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"        # 容器端口，不是 Service 端口
+    prometheus.io/path: "/metrics"    # Spring Boot 用 /actuator/prometheus
+    prometheus.io/scheme: "http"</pre>
+          </div>
+
+          <h3>③ 场景二：不能改注解时，逐条加采集任务</h3>
+          <div class="code">
+            <div class="bar2">my-values.yaml（追加）<button data-copy>复制</button></div>
+            <pre>appMetrics:
+  extraScrapeConfigs:
+    # 中间件 1：Redis Exporter（按 Service / Endpoints 抓）
+    - job_name: redis-exporter
+      kubernetes_sd_configs:
+        - role: endpoints
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name]
+          action: keep
+          regex: middle;redis-exporter
+        - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+          target_label: instance
+
+    # 中间件 2：MySQL Exporter（按 Pod 标签抓，端口写死）
+    - job_name: mysql-exporter
+      kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names: [middle]
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          action: keep
+          regex: mysql-exporter
+        - source_labels: [__meta_kubernetes_pod_ip]
+          target_label: __address__
+          replacement: ${1}:9104
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          target_label: service
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod</pre>
+          </div>
+
+          <div class="callout info">
+            <span class="ic">i</span>
+            <div>每个列表项必须是<b>完整、合法的 Prometheus scrape_config</b>，Chart 只做追加。<br>只想按清单抓、彻底关掉规范发现：<code>appMetrics.defaultJob.enabled: false</code>（0.2.2 起）。</div>
+          </div>
+          <div class="callout warn">
+            <span class="ic">!</span>
+            <div><b>本模式不支持控制台远程下发</b>：KSM Agent 的 <code>providers = ["local"]</code>，抓取目标只能通过 values 维护，改一次就要走一次 <code>helm upgrade</code>。</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== 5 ===================== -->
+      <section id="s5" data-sec="5">
+        <h2><span class="n">5</span>部署并检查</h2>
+        <p class="purpose">一条命令装完，用三个信号确认成功。</p>
+
+        <div class="code">
+          <div class="bar2">bash<button data-copy>复制</button></div>
+          <pre># 安装（在线）
+helm upgrade --install {{release}} \
+  oci://registry.flashcat.cloud/public/charts/categraf \
+  --version {{chartVersion}} \
+  -n {{namespace}} --create-namespace \
+  -f my-values.yaml
+
+# 安装（离线，已导入 chart tgz 与镜像）
+helm upgrade --install {{release}} ./categraf \
+  -n {{namespace}} --create-namespace \
+  -f my-values.yaml</pre>
+        </div>
+
+        <div class="code" data-modes="ds">
+          <div class="bar2">bash · 检查 DaemonSet<button data-copy>复制</button></div>
+          <pre>kubectl -n {{namespace}} get ds {{release}}
+kubectl -n {{namespace}} get pods -o wide
+kubectl get nodes --no-headers | wc -l      # 期望 Pod 数 = 节点数</pre>
+        </div>
+
+        <div class="code" data-modes="sts">
+          <div class="bar2">bash · 检查 StatefulSet<button data-copy>复制</button></div>
+          <pre>kubectl -n {{namespace}} get sts {{release}}-ksm
+kubectl -n {{namespace}} exec {{release}}-ksm-0 -- \
+  cat /etc/categraf/cluster-scrape.yaml | grep job_name</pre>
+        </div>
+
+        <div class="checks">
+          <div class="ct">验收（全打勾即接入完成）</div>
+          <label data-modes="ds"><input type="checkbox" data-check="s5-d1" /><span>DaemonSet <code>READY</code> 副本数 = 集群节点数</span></label>
+          <label data-modes="ds"><input type="checkbox" data-check="s5-d2" /><span>Pod 日志无报错：<code>kubectl -n {{namespace}} logs ds/{{release}} --tail=50</code></span></label>
+          <label data-modes="ds"><input type="checkbox" data-check="s5-d3" /><span>Flashcat 设备列表出现该集群节点，<code>target_up=2</code></span></label>
+          <label data-modes="ds"><input type="checkbox" data-check="s5-d4" /><span>指标有数：<code>node_load1{cluster="{{clusterName}}"}</code></span></label>
+          <label data-modes="sts"><input type="checkbox" data-check="s5-s1" /><span><code>{{release}}-ksm</code> 就绪 <code>1/1</code></span></label>
+          <label data-modes="sts"><input type="checkbox" data-check="s5-s2" /><span><code>up{job="kube-state-metrics"}</code> = 1</span></label>
+          <label data-modes="sts"><input type="checkbox" data-check="s5-s3" /><span><code>up{job="app-metrics"}</code> = 1（或自定义 job 为 1）</span></label>
+          <label data-modes="sts"><input type="checkbox" data-check="s5-s4" /><span>设备在线：<code>{{clusterName}}-{{release}}-ksm-0</code>，<code>target_up=2</code></span></label>
+        </div>
+
+        <div class="callout info">
+          <span class="ic">i</span>
+          <div><b>常见失败</b>：<code>DESIRED &gt; READY</code> 多半是节点 taint 或 PSA 拒绝；<code>up=0</code> 多半是端口/路径写错（写成 Service 端口而不是容器端口）；设备离线先验证节点到 <code>{{serverAddr}}</code> 的网络。</div>
+        </div>
+      </section>
+
+      <!-- ===================== 6 ===================== -->
+      <section id="s6" data-sec="6">
+        <h2><span class="n">6</span>升级</h2>
+        <p class="purpose">升级只是换个版本号，但要先备份、并注意一个已知坑。</p>
+
+        <div class="code">
+          <div class="bar2">bash<button data-copy>复制</button></div>
+          <pre># ① 备份当前 values
+helm -n {{namespace}} get values {{release}} &gt; {{release}}-values.backup.yaml
+
+# ② 升级到指定版本
+helm upgrade {{release}} \
+  oci://registry.flashcat.cloud/public/charts/categraf \
+  --version &lt;新版本&gt; \
+  -n {{namespace}} -f my-values.yaml</pre>
+        </div>
+
+        <div class="code" data-modes="ds">
+          <div class="bar2">bash · 观察滚动<button data-copy>复制</button></div>
+          <pre>kubectl -n {{namespace}} rollout status ds/{{release}}
+# 从 0.2.1 / 0.2.2-rc.1 升级且 values 未变时，补一条：
+kubectl rollout restart ds/{{release}} -n {{namespace}}</pre>
+        </div>
+
+        <div class="code" data-modes="sts">
+          <div class="bar2">bash · 观察滚动<button data-copy>复制</button></div>
+          <pre>kubectl -n {{namespace}} rollout status sts/{{release}}-ksm
+# 从 0.2.1 / 0.2.2-rc.1 升级且 values 未变时，补一条：
+kubectl rollout restart sts/{{release}}-ksm -n {{namespace}}</pre>
+        </div>
+
+        <div class="callout warn">
+          <span class="ic">!</span>
+          <div>
+            0.2.2 起 checksum 基于渲染后的配置，升级会自动滚动 Pod。
+            <span data-modes="ds">DaemonSet 升级会短暂中断采集（秒级）。</span>
+            <span data-modes="sts">StatefulSet 是单副本，升级期间有数秒抓取缺口，属正常。</span>
+            回滚：<code>helm rollback {{release}} &lt;REVISION&gt; -n {{namespace}}</code>
+          </div>
+        </div>
+
+        <div class="checks">
+          <div class="ct">验收</div>
+          <label><input type="checkbox" data-check="s6-c1" /><span>Pod 全部 Running 且 <code>AGE</code> 为刚刚；设备 <code>target_up=2</code> 未掉</span></label>
+        </div>
+      </section>
+
+      <!-- ===================== 7 ===================== -->
+      <section id="s7" data-sec="7">
+        <h2><span class="n">7</span>卸载</h2>
+        <p class="purpose">卸载不只有一条命令，还要先决定设备要不要保留。</p>
+
+        <div class="code">
+          <div class="bar2">bash<button data-copy>复制</button></div>
+          <pre># 默认卸载：会顺带清理本集群在 Flashcat 上的设备
+helm uninstall {{release}} -n {{namespace}} --wait
+
+# 只删工作负载、保留设备
+helm uninstall {{release}} -n {{namespace}} --no-hooks</pre>
+        </div>
+
+        <div class="callout warn">
+          <span class="ic">!</span>
+          <div>
+            <code>operator.cleanup.nodeCategraf</code> / <code>ksmCategraf</code> 默认 <code>true</code>：卸载会先停止采集、等设备心跳停止（最长 2 分钟）后删除本集群设备。清理只作用于本集群，<b>不会删除业务组</b>。需要保留设备请用 <code>--no-hooks</code>，或先把 <code>cleanup</code> 设为 <code>false</code>。
+          </div>
+        </div>
+
+        <div class="checks">
+          <div class="ct">验收</div>
+          <label><input type="checkbox" data-check="s7-c1" /><span><code>kubectl -n {{namespace}} get pods</code> 中无相关资源</span></label>
+          <label><input type="checkbox" data-check="s7-c2" /><span>Flashcat 设备列表已按预期清理或保留</span></label>
+        </div>
+      </section>
+
+      <!-- ===================== 8 ===================== -->
+      <section id="s8" data-sec="8">
+        <h2><span class="n">8</span>其他说明</h2>
+        <p class="purpose">刁钻但一定会被问的场景，集中收口。</p>
+
+        <h3 data-modes="both">节点级场景</h3>
+        <div data-modes="ds">
+          <table>
+            <thead><tr><th>场景</th><th>做法</th><th>副作用</th></tr></thead>
+            <tbody>
+              <tr><td>不开启 Node 采集</td><td><code>nodeExporter: false</code> + <code>hostNative.enabled: false</code></td><td>Flashcat 主机大盘会空</td></tr>
+              <tr><td>开启 kubelet 采集</td><td><code>inputs.cadvisor: true</code>（默认已开）</td><td>需 kubelet 10250 可达</td></tr>
+              <tr><td>自动注册到业务组</td><td><code>categraf.heartbeatGid: "{{gid}}"</code></td><td>设备心跳自动归组，控制台仍可手动移组</td></tr>
+              <tr><td>缩容自动删设备</td><td>Operator 监听 Node 删除 → 观察期 → 校验心跳后删除</td><td>只覆盖 DaemonSet，不覆盖 STS 缩容</td></tr>
+              <tr><td>多 Release 并存</td><td>每个 Release 用不同 <code>clusterName</code> 与命名空间</td><td>集群名重复会导致设备互串</td></tr>
+              <tr><td>Windows 节点</td><td>不支持</td><td>DS Pod 在 Windows 节点会失败</td></tr>
+            </tbody>
+          </table>
+          <div class="callout warn"><span class="ic">!</span><div>Operator 的自动清理<b>只覆盖 Node Agent</b>（监听的是 K8s Node 删除，不是 Pod 缩容）；KSM Agent 的设备只在 <code>helm uninstall</code> 时清理。</div></div>
+        </div>
+
+        <h3 data-modes="both">集群与应用级场景</h3>
+        <div data-modes="sts">
+          <table>
+            <thead><tr><th>场景</th><th>做法</th><th>注意</th></tr></thead>
+            <tbody>
+              <tr><td>只想按清单抓</td><td><code>appMetrics.defaultJob.enabled: false</code></td><td>内置 <code>app-metrics</code> 关闭，只剩自定义 job</td></tr>
+              <tr><td>只抓指定命名空间</td><td>自定义 job 里用 <code>namespaces.names</code> 收窄</td><td>内置 job 是全命名空间</td></tr>
+              <tr><td>replicas &gt; 1</td><td>不建议</td><td>每副本读同一份配置，会重复抓取</td></tr>
+              <tr><td>STS 缩容</td><td>无自动清理</td><td>设备需人工在列表删除</td></tr>
+              <tr><td>不部署 KSM</td><td><code>kubeStateMetrics.enabled: false</code></td><td>需已有 KSM，否则 <code>up=0</code></td></tr>
+              <tr><td>控制平面采集</td><td><code>controlPlane.enabled: true</code> + 放开监听地址</td><td>仅 kubeadm Static Pod 集群适用</td></tr>
+            </tbody>
+          </table>
+          <div class="callout info"><span class="ic">i</span><div>组件采集按集群实际插件只留一个（Calico 或 Cilium），全开会产生 <code>up=0</code> 的无效 target。</div></div>
+        </div>
+      </section>
+
+      <div class="callout ok" style="margin-top:6px">
+        <span class="ic">✓</span>
+        <div><b>接入完成</b>。下一步：配置告警规则 / 开启服务拓扑 / 接入应用 APM。</div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<footer>
+  Demo 说明：本页仅用于确认文案与信息层级；所有命令与配置项来自 Chart <code>categraf-0.2.2</code> 的实际渲染结果。
+</footer>
+
+<script>
+(function () {
+  var VARS = {
+    serverAddr: "http://flashcat.example.com:19000",
+    clusterName: "demo-cluster",
+    namespace: "flashcat",
+    release: "categraf",
+    env: "prod",
+    gid: "2",
+    chartVersion: "0.2.2",
+    registry: "registry.flashcat.cloud/public",
+    token: "your-flashcat-token",
+    interval: "15"
+  };
+  var TITLES = ["相关依赖","运行环境要求","功能说明","配置文件","部署并检查","升级","卸载","其他说明"];
+  var mode = "both";
+  var checked = new Set();
+  var content = document.getElementById("content");
+  var template = content.innerHTML;
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function subst(html) {
+    return html.replace(/\{\{(\w+)\}\}/g, function (m, k) {
+      return Object.prototype.hasOwnProperty.call(VARS, k) ? esc(VARS[k]) : m;
+    });
+  }
+  function allowed(el) {
+    var m = el.getAttribute("data-modes");
+    if (!m) return true;
+    var list = m.split(/\s+/);
+    // both 模式下显示 ds + sts 的块；单模式下只显示该模式（both 标记的块仅组合态出现）
+    if (mode === "both") return list.indexOf("both") > -1 || list.indexOf("ds") > -1 || list.indexOf("sts") > -1;
+    return list.indexOf(mode) > -1;
+  }
+  function applyModes() {
+    var nodes = content.querySelectorAll("[data-modes]");
+    for (var i = 0; i < nodes.length; i++) nodes[i].hidden = !allowed(nodes[i]);
+    // data-single：仅在该形态单独部署时出现（组合态隐藏）
+    var singles = content.querySelectorAll("[data-single]");
+    for (var j = 0; j < singles.length; j++) {
+      singles[j].hidden = mode !== singles[j].getAttribute("data-single");
+    }
+  }
+  function restoreChecks() {
+    var boxes = content.querySelectorAll("input[data-check]");
+    for (var i = 0; i < boxes.length; i++) {
+      boxes[i].checked = checked.has(boxes[i].getAttribute("data-check"));
+    }
+  }
+  function visibleBoxes() {
+    var out = [], boxes = content.querySelectorAll("input[data-check]");
+    for (var i = 0; i < boxes.length; i++) {
+      var p = boxes[i].closest("[hidden]");
+      if (!p) out.push(boxes[i]);
+    }
+    return out;
+  }
+  function updateProgress() {
+    var boxes = visibleBoxes(), done = 0;
+    for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) done++;
+    var total = boxes.length;
+    document.getElementById("prog").textContent = done + " / " + total;
+    document.getElementById("bar").style.width = (total ? (done / total * 100) : 0) + "%";
+
+    var tocBtns = document.querySelectorAll("#toc button");
+    for (var j = 0; j < tocBtns.length; j++) {
+      var sec = document.getElementById(tocBtns[j].getAttribute("data-sec"));
+      var sb = sec ? sec.querySelectorAll("input[data-check]") : [];
+      var all = sb.length > 0, any = false;
+      for (var k = 0; k < sb.length; k++) {
+        if (sb[k].closest("[hidden]")) continue;
+        any = true;
+        if (!sb[k].checked) all = false;
+      }
+      tocBtns[j].classList.toggle("done", any && all);
+    }
+  }
+  function render() {
+    content.innerHTML = subst(template);
+    applyModes();
+    restoreChecks();
+    updateProgress();
+    var vc = document.getElementById("verChart");
+    if (vc) vc.textContent = VARS.chartVersion;
+  }
+
+  // 目录
+  var toc = document.getElementById("toc");
+  TITLES.forEach(function (t, i) {
+    var b = document.createElement("button");
+    b.setAttribute("data-sec", "s" + (i + 1));
+    b.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="lbl">' + t + '</span>';
+    b.addEventListener("click", function () {
+      var el = document.getElementById("s" + (i + 1));
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    toc.appendChild(b);
+  });
+
+  // 形态切换
+  var modeBtns = document.querySelectorAll(".mode");
+  function syncModeButtons() {
+    for (var j = 0; j < modeBtns.length; j++) {
+      modeBtns[j].setAttribute("aria-pressed", modeBtns[j].getAttribute("data-mode") === mode ? "true" : "false");
+    }
+  }
+  for (var i = 0; i < modeBtns.length; i++) {
+    modeBtns[i].addEventListener("click", function (e) {
+      mode = e.currentTarget.getAttribute("data-mode");
+      syncModeButtons();
+      render();
+    });
+  }
+  // 支持 ?mode=ds|sts|both 预设（便于评审与截图）
+  var preset = null;
+  try { preset = new URLSearchParams(location.search).get("mode"); } catch (err) {}
+  if (preset && ["ds", "sts", "both"].indexOf(preset) > -1) mode = preset;
+  syncModeButtons();
+
+  // 变量输入
+  var inputs = document.querySelectorAll("[data-var]");
+  for (var v = 0; v < inputs.length; v++) {
+    inputs[v].addEventListener("input", function (e) {
+      VARS[e.target.getAttribute("data-var")] = e.target.value;
+      render();
+    });
+  }
+
+  // 勾选 / 复制（事件委托）
+  content.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.matches && el.matches("input[data-check]")) {
+      var id = el.getAttribute("data-check");
+      if (el.checked) checked.add(id); else checked.delete(id);
+      updateProgress();
+    }
+  });
+  content.addEventListener("click", function (e) {
+    var btn = e.target.closest && e.target.closest("[data-copy]");
+    if (!btn) return;
+    var box = btn.closest(".code");
+    var pre = box && box.querySelector("pre");
+    if (!pre) return;
+    var text = pre.innerText;
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = "已复制";
+      setTimeout(function () { btn.textContent = old; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, done);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (err) {}
+      document.body.removeChild(ta); done();
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

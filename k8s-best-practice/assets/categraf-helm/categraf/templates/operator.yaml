@@ -103,7 +103,7 @@ spec:
         component: operator
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
-        checksum/config: {{ include "categraf.valuesChecksum" . | sha256sum }}
+        checksum/config: {{ include "categraf.configChecksum" . | sha256sum }}
     spec:
       serviceAccountName: {{ include "categraf.resourceName" (dict "root" . "suffix" "operator") }}
       containers:

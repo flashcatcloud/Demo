@@ -1,0 +1,1241 @@
+---
+# Source: categraf/templates/kube-state-metrics.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-kube-state-metrics
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: categraf/templates/operator.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-operator
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: categraf/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: categraf/templates/operator.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: t-operator-secret
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+stringData:
+  user-token: "tok"
+---
+# Source: categraf/templates/ksm-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-ksm-config
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.toml: |
+    [global]
+    interval = 20
+    providers = ["local"]
+    hostname = "${CLUSTER_NAME}-${HOSTNAME}"
+    [global.labels]
+    env = "test"
+    cluster = "k8s-flashcat-test-20261029"
+    categraf = "ksmAgent"
+    environment = "test"
+    owner = "platform"
+    
+    [global.n9e_server]
+    address="http://192.168.31.14:19000"
+    [writer_opt]
+    batch = 3000
+    chan_size = 1500000
+    [heartbeat]
+    enable = true
+    url = "http://192.168.31.14:19000/v1/n9e-plus/heartbeat"
+    interval = 12
+    timeout = 6000
+    dial_timeout = 3000
+    [prometheus]
+    enable = true
+    scrape_config_file = "/etc/categraf/cluster-scrape.yaml"
+    log_level = "info"
+---
+# Source: categraf/templates/ksm-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-ksm-scrape
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  cluster-scrape.yaml: |
+    global:
+      scrape_interval: 15s
+      external_labels:
+        cluster: "k8s-flashcat-test-20261029"
+        environment: "test"
+        owner: "platform"
+        
+    scrape_configs:
+      - job_name: 'kube-state-metrics'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;t-kube-state-metrics;http-metrics
+      - job_name: 'app-metrics'
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: service
+            regex: ^(.+)$
+            replacement: $1
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            target_label: service
+            regex: ^(.+)$
+            replacement: $1
+          - source_labels: [__meta_kubernetes_pod_label_team]
+            target_label: team
+            regex: ^(.+)$
+            replacement: $1
+          - source_labels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            target_label: __address__
+            regex: (.+);(\d+)
+            replacement: "${1}:${2}"
+          - target_label: __metrics_path__
+            replacement: "/metrics"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            target_label: __metrics_path__
+            regex: ^(.+)$
+            replacement: $1
+          - target_label: __scheme__
+            replacement: http
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scheme]
+            target_label: __scheme__
+            regex: ^(https?)$
+            replacement: $1
+      - job_name: 'coredns'
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: kube-system;(coredns|kube-dns);metrics
+      - job_name: 'calico'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_k8s_app]
+            action: keep
+            regex: kube-system;calico-node
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:9091
+      - job_name: 'cilium'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: kube-system;cilium
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: ${1}:9090
+    remote_write:
+      - url: 'http://192.168.31.14:19000/prometheus/v1/write'
+        basic_auth:
+          username: "user001"
+          password: ""
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-config
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.toml: |
+    [global]
+    print_configs = false
+    hostname = "${HOSTNAME}"
+    omit_hostname = false
+    precision = "ms"
+    interval = 20
+    providers = ["local", "http", "rmq"]
+    [global.labels]
+    env = "test"
+    cluster = "k8s-flashcat-test-20261029"
+    categraf = "nodeAgent"
+    environment = "test"
+    owner = "platform"
+    
+    [global.n9e_server]
+    address="http://192.168.31.14:19000"
+    [writer_opt]
+    batch = 3000
+    chan_size = 1500000
+    [heartbeat]
+    enable = true
+    url = "http://192.168.31.14:19000/v1/n9e-plus/heartbeat"
+    interval = 12
+    timeout = 6000
+    dial_timeout = 3000
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-cadvisor
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  cadvisor.toml: |
+    interval = 15
+    [[instances]]
+    urls = ["https://127.0.0.1:10250/metrics/cadvisor"]
+    bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    use_tls = true
+    insecure_skip_verify = true
+    labels = { job = "kubelet", component = "cadvisor" }
+    [[instances]]
+    urls = ["https://127.0.0.1:10250/metrics"]
+    bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    use_tls = true
+    insecure_skip_verify = true
+    labels = { job = "kubelet", component = "kubelet-metrics" }
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-kube-proxy
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  kube-proxy.toml: |
+    interval = 15
+    [[instances]]
+    urls = ["http://127.0.0.1:10249/metrics"]
+    use_tls = false
+    labels = { job = "kube-proxy" }
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-node-exporter
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  exporter.toml: |
+    interval = 15
+    collectors = [
+        "--path.procfs=/hostfs/proc",
+        "--path.sysfs=/hostfs/sys",
+        "--path.rootfs=/hostfs",
+        "--collector.cpu",
+        "--collector.cpufreq",
+        "--collector.meminfo",
+        "--collector.diskstats",
+        "--collector.filesystem",
+        "--collector.netdev",
+        "--collector.netstat",
+        "--collector.loadavg",
+        "--collector.stat",
+        "--collector.vmstat",
+        "--collector.uname",
+        "--collector.time",
+        "--collector.timex",
+        "--collector.entropy",
+        "--collector.edac",
+        "--collector.hwmon",
+        "--collector.mdadm",
+        "--collector.pressure",
+        "--collector.processes",
+        "--collector.schedstat",
+        "--collector.selinux",
+        "--collector.sockstat",
+        "--collector.softnet",
+        "--collector.udp_queues",
+        "--collector.xfs",
+    ]
+    [[relabel_configs]]
+    source_labels = ["agent_hostname"]
+    target_label = "instance"
+    action = "replace"
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-cpu
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  cpu.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-mem
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  mem.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-disk
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  disk.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-diskio
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  diskio.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-net
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  net.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-netstat
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  netstat.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-system
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  system.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-kernel
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  kernel.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-swap
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  swap.toml: |
+    interval = 15
+
+    [[instances]]
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-input-process
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  processes.toml: |
+    interval = 15
+---
+# Source: categraf/templates/node-categraf.yaml
+# 原生主机插件关闭时用空目录覆盖镜像默认配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-disable-host
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data: {}
+---
+# Source: categraf/templates/node-categraf.yaml
+# 禁用镜像默认的 input.syslog 插件，避免容器内 tail 系统日志文件失败
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-disable-syslog
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data: {}
+---
+# Source: categraf/templates/operator.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-operator-config
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+data:
+  FLASHCAT_ADDR: "http://192.168.31.14:19000"
+  CLUSTER_NAME: "k8s-flashcat-test-20261029"
+  DEFAULT_WAIT_DURATION: "4h"
+  HEARTBEAT_INTERVAL: "10s"
+  HEARTBEAT_STOP_FACTOR: "3"
+  RECONCILE_INTERVAL: "5m"
+  MAX_NODE_STALE_DURATION: "168h"
+  NAMESPACE: "default"
+  CLEANUP_NODE_CATEGRAF: "true"
+  CLEANUP_KSM_CATEGRAF: "true"
+  CATEGRAF_DAEMONSET_NAME: "t"
+  CATEGRAF_KSM_STATEFULSET_NAME: "t-ksm"
+  CATEGRAF_OPERATOR_DEPLOYMENT_NAME: "t-operator"
+---
+# Source: categraf/templates/kube-state-metrics.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: t-default-kube-state-metrics
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - secrets
+      - nodes
+      - pods
+      - services
+      - serviceaccounts
+      - resourcequotas
+      - limitranges
+      - persistentvolumeclaims
+      - persistentvolumes
+      - namespaces
+      - endpoints
+    verbs: ["list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - statefulsets
+      - daemonsets
+      - deployments
+      - replicasets
+    verbs: ["list", "watch"]
+  - apiGroups: ["batch"]
+    resources:
+      - cronjobs
+      - jobs
+    verbs: ["list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["list", "watch"]
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+      - volumeattachments
+    verbs: ["list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - networkpolicies
+      - ingressclasses
+      - ingresses
+    verbs: ["list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources:
+      - leases
+    verbs: ["list", "watch"]
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs: ["list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources:
+      - endpointslices
+    verbs: ["list", "watch"]
+  - apiGroups: ["certificates.k8s.io"]
+    resources:
+      - certificatesigningrequests
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources:
+      - replicationcontrollers
+    verbs: ["list", "watch"]
+---
+# Source: categraf/templates/operator.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: t-default-operator
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups: [""]
+  resources: [nodes]
+  verbs: [get, list, watch]
+- apiGroups: ["apps"]
+  resources: [daemonsets]
+  verbs: [get, list, watch]
+- apiGroups: [coordination.k8s.io]
+  resources: [leases]
+  verbs: [get, list, watch, create, update, patch, delete]
+- apiGroups: [""]
+  resources: [events]
+  verbs: [create, patch, update]
+---
+# Source: categraf/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: t-default-node-agent
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/metrics
+  - nodes/stats
+  - nodes/proxy
+  - services
+  - endpoints
+  - pods
+  verbs: [get, list, watch]
+- apiGroups: [extensions, networking.k8s.io]
+  resources: [ingresses]
+  verbs: [get, list, watch]
+- apiGroups: [discovery.k8s.io]
+  resources: [endpointslices]
+  verbs: [get, list, watch]
+- nonResourceURLs: [/metrics, /metrics/cadvisor]
+  verbs: [get]
+---
+# Source: categraf/templates/kube-state-metrics.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: t-default-kube-state-metrics
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: t-default-kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: t-kube-state-metrics
+    namespace: default
+---
+# Source: categraf/templates/operator.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: t-default-operator
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: t-default-operator
+subjects:
+- kind: ServiceAccount
+  name: t-operator
+  namespace: default
+---
+# Source: categraf/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: t-default-node-agent
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: t-default-node-agent
+subjects:
+- kind: ServiceAccount
+  name: t
+  namespace: default
+
+---
+# Source: categraf/templates/kube-state-metrics.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-kube-state-metrics
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kube-state-metrics
+spec:
+  clusterIP: None
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: http-metrics
+  selector:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/instance: t
+---
+# Source: categraf/templates/node-categraf.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: t
+  namespace: default
+  labels:
+    app: n9e
+    component: categraf
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: n9e
+      component: categraf
+      app.kubernetes.io/instance: t
+  template:
+    metadata:
+      labels:
+        app: n9e
+        component: categraf
+        app.kubernetes.io/instance: t
+      annotations:
+        checksum/config: NORM
+    spec:
+      serviceAccountName: t
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+      - name: categraf
+        image: "registry.flashcat.cloud/public/categraf_ent:servicemap-v0.5.32"
+        imagePullPolicy: IfNotPresent
+        command: ["/usr/bin/categraf"]
+        args: ["-configs", "/opt/categraf/conf"]
+        securityContext:
+          privileged: true
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        env:
+        - name: TZ
+          value: Asia/Shanghai
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: HOSTIP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: CLUSTER_NAME
+          value: "k8s-flashcat-test-20261029"
+        - name: HOST_PROC
+          value: /hostfs/proc
+        - name: HOST_SYS
+          value: /hostfs/sys
+        - name: HOST_MOUNT_PREFIX
+          value: /hostfs
+        - name: CATEGRAF_HOST_EXEC_PROFILE
+          value: "true"
+        volumeMounts:
+        - mountPath: /opt/categraf/conf/config.toml
+          name: categraf-config
+          subPath: config.toml
+        - mountPath: /opt/categraf/conf/input.prometheus/cadvisor.toml
+          name: categraf-input-cadvisor
+          subPath: cadvisor.toml
+        - mountPath: /opt/categraf/conf/input.node_exporter
+          name: categraf-input-node-exporter
+        - mountPath: /opt/categraf/conf/input.prometheus/kube-proxy.toml
+          name: categraf-input-kube-proxy
+          subPath: kube-proxy.toml
+        - mountPath: /opt/categraf/conf/input.cpu/cpu.toml
+          name: categraf-input-cpu
+          subPath: cpu.toml
+        - mountPath: /opt/categraf/conf/input.mem/mem.toml
+          name: categraf-input-mem
+          subPath: mem.toml
+        - mountPath: /opt/categraf/conf/input.disk/disk.toml
+          name: categraf-input-disk
+          subPath: disk.toml
+        - mountPath: /opt/categraf/conf/input.diskio/diskio.toml
+          name: categraf-input-diskio
+          subPath: diskio.toml
+        - mountPath: /opt/categraf/conf/input.net/net.toml
+          name: categraf-input-net
+          subPath: net.toml
+        - mountPath: /opt/categraf/conf/input.netstat/netstat.toml
+          name: categraf-input-netstat
+          subPath: netstat.toml
+        - mountPath: /opt/categraf/conf/input.system/system.toml
+          name: categraf-input-system
+          subPath: system.toml
+        - mountPath: /opt/categraf/conf/input.kernel/kernel.toml
+          name: categraf-input-kernel
+          subPath: kernel.toml
+        - mountPath: /opt/categraf/conf/input.swap/swap.toml
+          name: categraf-input-swap
+          subPath: swap.toml
+        - mountPath: /opt/categraf/conf/input.processes/processes.toml
+          name: categraf-input-process
+          subPath: processes.toml
+        - mountPath: /opt/categraf/conf/input.syslog
+          name: categraf-disable-syslog
+        - mountPath: /var/lib/categraf/ibex
+          name: ibex-host-meta
+        - mountPath: /var/run/utmp
+          name: hostroutmp
+          readOnly: true
+        - mountPath: /hostfs
+          name: hostrofs
+          readOnly: true
+          mountPropagation: HostToContainer
+      volumes:
+      - configMap:
+          name: t-config
+        name: categraf-config
+      - configMap:
+          name: t-input-cadvisor
+        name: categraf-input-cadvisor
+      - configMap:
+          name: t-input-node-exporter
+        name: categraf-input-node-exporter
+      - configMap:
+          name: t-input-kube-proxy
+        name: categraf-input-kube-proxy
+      - configMap:
+          name: t-input-cpu
+        name: categraf-input-cpu
+      - configMap:
+          name: t-input-mem
+        name: categraf-input-mem
+      - configMap:
+          name: t-input-disk
+        name: categraf-input-disk
+      - configMap:
+          name: t-input-diskio
+        name: categraf-input-diskio
+      - configMap:
+          name: t-input-net
+        name: categraf-input-net
+      - configMap:
+          name: t-input-netstat
+        name: categraf-input-netstat
+      - configMap:
+          name: t-input-system
+        name: categraf-input-system
+      - configMap:
+          name: t-input-kernel
+        name: categraf-input-kernel
+      - configMap:
+          name: t-input-swap
+        name: categraf-input-swap
+      - configMap:
+          name: t-input-process
+        name: categraf-input-process
+      - configMap:
+          name: t-disable-host
+        name: categraf-disable-host
+      - configMap:
+          name: t-disable-syslog
+        name: categraf-disable-syslog
+      - hostPath:
+          path: /var/run/utmp
+        name: hostroutmp
+      - hostPath:
+          path: /var/lib/categraf/ibex
+          type: DirectoryOrCreate
+        name: ibex-host-meta
+      - hostPath:
+          path: /
+        name: hostrofs
+
+---
+# Source: categraf/templates/kube-state-metrics.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t-kube-state-metrics
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: kube-state-metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+      app.kubernetes.io/instance: t
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-state-metrics
+        app.kubernetes.io/instance: t
+    spec:
+      serviceAccountName: t-kube-state-metrics
+      containers:
+        - image: "registry.flashcat.cloud/public/kube-state-metrics/kube-state-metrics:v2.19.1"
+          imagePullPolicy: IfNotPresent
+          name: kube-state-metrics
+          ports:
+            - containerPort: 8080
+              name: http-metrics
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+
+---
+# Source: categraf/templates/operator.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t-operator
+  namespace: default
+  labels:
+    app: categraf
+    component: operator
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: categraf
+      component: operator
+      app.kubernetes.io/instance: t
+  template:
+    metadata:
+      labels:
+        app: categraf
+        component: operator
+        app.kubernetes.io/instance: t
+      annotations:
+        checksum/config: NORM
+    spec:
+      serviceAccountName: t-operator
+      containers:
+      - name: operator
+        image: "registry.flashcat.cloud/public/categraf-operator:0.0.7"
+        imagePullPolicy: IfNotPresent
+        args:
+        - --leader-elect=true
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: t-operator-config
+        env:
+        - name: FLASHCAT_USER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: t-operator-secret
+              key: user-token
+              optional: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+
+---
+# Source: categraf/templates/ksm-categraf.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: t-ksm
+  namespace: default
+  labels:
+    app: n9e
+    component: categraf-ksm
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  serviceName: t-ksm
+  selector:
+    matchLabels:
+      app: n9e
+      component: categraf-ksm
+      app.kubernetes.io/instance: t
+  template:
+    metadata:
+      labels:
+        app: n9e
+        component: categraf-ksm
+        app.kubernetes.io/instance: t
+      annotations:
+        checksum/config: NORM
+    spec:
+      serviceAccountName: t
+      containers:
+        - image: "registry.flashcat.cloud/public/categraf_ent:v0.5.32"
+          imagePullPolicy: IfNotPresent
+          name: categraf
+          env:
+            - name: CLUSTER_NAME
+              value: "k8s-flashcat-test-20261029"
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command: ["/usr/bin/categraf"]
+          args: ["-configs", "/opt/categraf/conf"]
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1.5Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - mountPath: /opt/categraf/conf/config.toml
+              name: categraf-config
+              subPath: config.toml
+            - mountPath: /etc/categraf/cluster-scrape.yaml
+              name: cluster-scrape-config
+              subPath: cluster-scrape.yaml
+            - mountPath: /opt/categraf/prometheus-wal
+              name: prometheus-wal
+      volumes:
+        - configMap:
+            name: t-ksm-config
+          name: categraf-config
+        - configMap:
+            name: t-ksm-scrape
+          name: cluster-scrape-config
+        - emptyDir: {}
+          name: prometheus-wal
+---
+# Source: categraf/templates/operator-cleanup-hook.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-operator-cleanup
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+# Source: categraf/templates/operator-cleanup-hook.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: t-operator-cleanup
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+# 仅允许删除本命名空间内的 operator Deployment、nodeAgent DaemonSet 与
+# ksmAgent StatefulSet（卸载清理先停 operator 自身，避免双执行者竞态）。
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "statefulsets"]
+  verbs: ["delete"]
+---
+# Source: categraf/templates/operator-cleanup-hook.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: t-operator-cleanup
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: t-operator-cleanup
+subjects:
+- kind: ServiceAccount
+  name: t-operator-cleanup
+  namespace: default
+---
+# Source: categraf/templates/operator-cleanup-hook.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: t-operator-cleanup
+  namespace: default
+  labels:
+    helm.sh/chart: NORM
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: NORM
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 420
+  template:
+    metadata:
+      labels:
+        app: categraf
+        component: operator-cleanup
+        app.kubernetes.io/instance: t
+    spec:
+      serviceAccountName: t-operator-cleanup
+      restartPolicy: Never
+      containers:
+      - name: cleanup
+        image: "registry.flashcat.cloud/public/categraf-operator:0.0.7"
+        imagePullPolicy: IfNotPresent
+        args: ["--cleanup-once"]
+        envFrom:
+        - configMapRef:
+            name: t-operator-config
+        env:
+        - name: FLASHCAT_USER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: t-operator-secret
+              key: user-token
+              optional: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+

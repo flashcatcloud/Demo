@@ -15,7 +15,9 @@
 # 说明:
 #   - helm OCI 使用独立凭据，docker login 不能替代 helm registry login
 #   - helm push 只打版本 tag；latest 标签需 oras/crane 补充（自动检测，缺失时给出提示）
-#   - 文档中的 oci://.../categraf（不带 --version）即拉取 latest，因此每次发版请保持 latest 指向最新版
+#   - 版本号规则：生产用正式版本（如 0.2.1），测试候选用预发布版本（如 0.2.2-rc.1）。
+#     预发布版本（版本号带 "-"）无论如何都不会更新 latest，latest 只指向生产 GA 版本。
+#   - 禁止同版本覆盖重推（会导致同一 tag 的 digest 漂移，回滚时无法确认内容）；改动必须升版本号。
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -50,6 +52,16 @@ fi
 VERSION="${TGZ#categraf-}"
 VERSION="${VERSION%.tgz}"
 
+# 预发布版本（0.2.2-rc.1 / 0.2.2-test.1 等）只推版本 tag，不更新 latest。
+# latest 只指向生产 GA 版本，避免测试构建被“不写版本号”的用户直接装上。
+IS_PRERELEASE=0
+case "$VERSION" in
+    *-*) IS_PRERELEASE=1 ;;
+esac
+if [ "$IS_PRERELEASE" = "1" ]; then
+    echo "==> 预发布版本 ${VERSION}：不更新 latest（latest 保持指向生产版本）"
+fi
+
 if [ "$LOGIN" = "1" ]; then
     if [ -n "${PUBLISH_REGISTRY_USER:-}" ] && [ -n "${PUBLISH_REGISTRY_PASSWORD:-}" ]; then
         echo "==> 登录 ${REGISTRY}（使用环境变量凭据）"
@@ -67,7 +79,9 @@ helm push "$TGZ" "$REPO"
 echo "==> 验证"
 helm show chart "${REPO}/categraf" --version "$VERSION"
 
-if [ "$SKIP_LATEST" = "1" ]; then
+if [ "$IS_PRERELEASE" = "1" ]; then
+    echo "（预发布版本不打 latest；GA 时用正式版本号再推一次，由那次更新 latest）"
+elif [ "$SKIP_LATEST" = "1" ]; then
     echo "（已跳过 latest 标签）"
 elif command -v oras >/dev/null 2>&1; then
     echo "==> 打 latest 标签（oras）"

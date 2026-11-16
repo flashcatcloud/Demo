@@ -104,11 +104,13 @@ spec:
     metadata:
       labels:
         app: test-gateway
-        # KSM Agent 自动发现标签
-        metrics-scrape: "true"
-        metrics-port: "8089"
+        app.kubernetes.io/name: test-gateway
+        team: demo
       annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8089"
         prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "http"
     spec:
       containers:
         - name: test-gateway
@@ -189,10 +191,13 @@ spec:
     metadata:
       labels:
         app: test-insert
-        metrics-scrape: "true"
-        metrics-port: "8089"
+        app.kubernetes.io/name: test-insert
+        team: demo
       annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8089"
         prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "http"
     spec:
       containers:
         - name: test-insert
@@ -273,10 +278,13 @@ spec:
     metadata:
       labels:
         app: test-query
-        metrics-scrape: "true"
-        metrics-port: "8089"
+        app.kubernetes.io/name: test-query
+        team: demo
       annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8089"
         prometheus.io/path: "/metrics"
+        prometheus.io/scheme: "http"
     spec:
       containers:
         - name: test-query

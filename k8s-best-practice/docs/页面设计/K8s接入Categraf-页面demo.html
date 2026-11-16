@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>接入 Kubernetes · Categraf</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#6d28d9; --accent-2:#7c3aed; --accent-bg:#f5f3ff; --accent-bd:#c4b5fd;
+    --ok:#059669;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;}
+  code{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  .page{max-width:1160px;margin:0 auto;padding:26px 24px 40px}
+
+  /* ---------- 顶部：接入对象 ---------- */
+  .agents{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+  .agent{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:16px 18px;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:.15s}
+  .agent:hover{border-color:#ddd6fe}
+  .agent .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:18px;
+    background:#f3f4f6;color:#6b7280;flex:0 0 auto}
+  .agent .t{display:block;font-size:14px;font-weight:640}
+  .agent .d{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+  .agent.on{border-color:var(--accent-bd);background:linear-gradient(180deg,#fbfaff,#fff);box-shadow:0 1px 2px rgba(109,40,217,.08)}
+  .agent.on .ic{background:var(--accent-bg);color:var(--accent)}
+  .agent.off{opacity:.62;cursor:not-allowed}
+  .tag{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:8px;vertical-align:1px}
+
+  /* ---------- 主面板 ---------- */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .steps{display:flex;border-bottom:1px solid var(--line);background:#fbfbfc}
+  .step{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 10px;border:0;
+    background:none;font:inherit;font-size:13px;color:var(--muted);cursor:pointer;position:relative}
+  .step .n{width:18px;height:18px;border-radius:50%;background:#e5e7eb;color:#6b7280;font-size:11px;
+    display:grid;place-items:center;font-weight:700}
+  .step.on{background:var(--accent);color:#fff}
+  .step.on .n{background:rgba(255,255,255,.22);color:#fff}
+  .step:first-child{border-right:1px solid var(--line)}
+
+  .body{display:flex;align-items:stretch}
+  .form{width:330px;flex:0 0 330px;border-right:1px solid var(--line);padding:20px 20px 24px}
+  .preview{flex:1;min-width:0;padding:22px 26px 26px}
+
+  /* ---------- 表单 ---------- */
+  .f{margin-bottom:16px}
+  .f>label,.f>.lb{display:block;font-size:12px;color:#4b5563;font-weight:600;margin-bottom:6px}
+  .req{color:#dc2626;margin-left:3px;font-weight:700}
+  .req-legend{font-size:11px;color:#9ca3af;margin:-4px 0 14px}
+  .req-legend .req{margin:0 2px 0 0}
+  .hint{font-size:11.5px;color:#9ca3af;line-height:1.6}
+  .f .hint{margin-top:5px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seg button{display:flex;align-items:center;gap:6px;justify-content:center;padding:9px 6px;border:1px solid var(--line);
+    border-radius:9px;background:#fff;font:inherit;font-size:12.5px;color:#374151;cursor:pointer}
+  .seg button.on{border-color:var(--accent-bd);background:var(--accent-bg);color:var(--accent);font-weight:600}
+  .seg button:disabled{opacity:.55;cursor:not-allowed}
+  input[type=text],select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+    font:13px/1.4 inherit;color:var(--text);background:#fff}
+  input[type=text]:focus,select:focus{outline:none;border-color:var(--accent-bd);box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+  .addr{position:relative}
+  .addr .clr{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:0;
+    background:none;color:#9ca3af;cursor:pointer;font-size:14px;line-height:1;border-radius:6px}
+  .addr .clr:hover{background:#f3f4f6;color:#4b5563}
+  .addr input{padding-right:32px}
+
+  .modes{display:flex;flex-direction:column;gap:8px}
+  .m{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:11px 12px;border:1px solid var(--line);
+    border-radius:11px;background:#fff;font:inherit;color:inherit;cursor:pointer;position:relative;transition:.15s}
+  .m:hover{border-color:#ddd6fe}
+  .m.on{border-color:var(--accent-bd);background:var(--accent-bg)}
+  .m .mk{width:16px;height:16px;border-radius:50%;border:1.5px solid #d1d5db;flex:0 0 auto;margin-top:2px;
+    display:grid;place-items:center;background:#fff}
+  .m.on .mk{border-color:var(--accent);background:var(--accent)}
+  .m.on .mk::after{content:"";width:6px;height:6px;border-radius:50%;background:#fff}
+  .m .tt{display:block;font-size:12.5px;font-weight:640;line-height:1.45}
+  .m .dd{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+  .m.on .tt{color:#4c1d95}
+
+  .note{font-size:11.5px;color:#9ca3af;line-height:1.6;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+
+  /* 可选配置 */
+  .adv{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+  .adv>summary{cursor:pointer;font-size:12.5px;color:#4b5563;font-weight:600;list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
+  .adv>summary::-webkit-details-marker{display:none}
+  .adv>summary::before{content:"▸";color:#9ca3af;font-weight:400}
+  .adv[open]>summary::before{content:"▾"}
+  .adv .badge{margin-left:auto;font-size:10.5px;color:#6b7280;background:#f3f4f6;border-radius:999px;padding:1px 7px;font-weight:500}
+  .adv .badge.dirty{background:var(--accent-bg);color:var(--accent)}
+  .opt{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px dashed #f3f4f6}
+  .opt .grow{flex:1;min-width:0}
+  .opt .tt{font-size:12.5px;font-weight:640}
+  .opt .dd{font-size:11px;color:#9ca3af;margin-top:2px;line-height:1.45}
+  .opt .sub{padding-left:14px}
+  .sw{width:34px;height:19px;border-radius:999px;border:1px solid #d1d5db;background:#e5e7eb;position:relative;
+    cursor:pointer;flex:0 0 auto;margin-top:2px;transition:.15s;padding:0}
+  .sw::after{content:"";position:absolute;top:1px;left:1px;width:15px;height:15px;border-radius:50%;
+    background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+  .sw.on{background:var(--accent);border-color:var(--accent)}
+  .sw.on::after{left:17px}
+  .kv{display:flex;gap:6px;margin:6px 0 0}
+  .kv input{flex:1;min-width:0;padding:6px 8px;font-size:11.5px;border:1px solid var(--line);border-radius:7px;font-family:ui-monospace,Menlo,monospace}
+  .kw{font-size:11px;color:#6b7280;font-weight:600;margin:9px 0 2px}
+  .kvl{font-size:11px;color:#9ca3af;width:26px;flex:0 0 auto;line-height:26px}
+  .kv button{border:0;background:none;color:#9ca3af;cursor:pointer;font-size:14px;width:20px;padding:0}
+  .kv button:hover{color:#ef4444}
+  .kv-add{margin-top:6px;font-size:11.5px;color:var(--accent);background:none;border:0;cursor:pointer;padding:0}
+  #opBox .kv{margin-top:2px}
+  .opt select{padding:5px 8px;font-size:11.5px;border-radius:7px;width:auto;margin-top:4px}
+  .tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;
+    background:#eef0f3;color:#6b7280;font-size:10px;font-weight:700;cursor:help;margin-left:4px;
+    position:relative;vertical-align:1px;flex:0 0 auto}
+  .tip:hover{background:#e5e7eb;color:#374151}
+  .tip::after{content:attr(data-tip);position:absolute;left:-4px;top:calc(100% + 6px);
+    width:238px;background:#111827;color:#f9fafb;font-size:11.5px;font-weight:400;line-height:1.6;
+    padding:9px 11px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;visibility:hidden;
+    transition:opacity .12s;z-index:60;text-align:left;white-space:normal;pointer-events:none}
+  .tip:hover::after{opacity:1;visibility:visible}
+  @media (max-width:900px){
+    .tip::after{width:220px}
+  }
+  .adv-h{font-size:10.5px;color:#9ca3af;margin:14px 0 2px;letter-spacing:.6px}
+  .adv-h:first-of-type{margin-top:10px}
+  .mainopt{display:flex;align-items:flex-start;gap:10px}
+  .mainopt .sw{margin-top:1px}
+  .mini{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:2px 0 9px}
+  .mini button{border:0;background:#fff;padding:5px 13px;font:12px inherit;color:#4b5563;cursor:pointer}
+  .mini button + button{border-left:1px solid var(--line)}
+  .mini button.on{background:var(--accent-bg);color:var(--accent);font-weight:600}
+  .mainopt .dd{margin:0;color:#374151;font-size:12.5px;line-height:1.5}
+  .adv textarea{width:100%;min-height:150px;margin-top:6px;padding:9px;border:1px solid var(--line);
+    border-radius:8px;font:11px/1.6 ui-monospace,Menlo,monospace;resize:vertical;
+    white-space:pre;overflow:auto;background:#fcfcfd}
+  .kv input[readonly]{background:#f9fafb;color:#9ca3af}
+
+  /* ---------- 右侧 ---------- */
+  .sec{margin-bottom:22px}
+  .sec:last-child{margin-bottom:0}
+  .sec h3{margin:0 0 2px;font-size:14px;font-weight:650;display:flex;align-items:center;gap:8px}
+  .sec h3 .n{width:20px;height:20px;border-radius:50%;background:var(--accent-bg);color:var(--accent);
+    font-size:11.5px;display:grid;place-items:center;font-weight:700;flex:0 0 auto}
+  .sec .sub{font-size:12px;color:var(--muted);margin:0 0 10px 28px}
+
+  .code{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff}
+  .code .hd{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fafafa;border-bottom:1px solid var(--line);
+    font-size:11.5px;color:#9ca3af;font-family:ui-monospace,Menlo,monospace}
+  .code .hd .nm{color:#374151;font-weight:600}
+  .code .hd button{margin-left:auto;display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);
+    border-radius:7px;padding:3px 9px;font:11.5px inherit;color:#4b5563;cursor:pointer}
+  .code .hd button:hover{border-color:#d1d5db;background:#f9fafb}
+  .code pre{margin:0;padding:14px 16px;overflow:auto;color:#111827;
+    font:12.5px/1.62 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2}
+  .k{color:#7c3aed}
+  .s{color:#047857}
+  .c{color:#9ca3af}
+  .cmd{color:#1d4ed8;font-weight:600}
+
+  /* 校验步骤 */
+  .vlist{display:flex;flex-direction:column;gap:10px}
+  .v{display:flex;gap:11px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:#fff}
+  .v .dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;margin-top:7px;flex:0 0 auto}
+  .v .vt{font-size:13px;font-weight:600}
+  .v .vd{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.55}
+  .v code{background:#f3f4f6;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11.5px}
+
+  .placeholder{padding:26px;border:1px dashed var(--line);border-radius:12px;background:#fcfcfd;
+    color:var(--muted);font-size:12.5px;text-align:center;line-height:1.7}
+
+  /* ---------- 底部 ---------- */
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    border-top:1px solid var(--line);padding:14px 20px;background:#fcfcfd}
+  .btn{border:1px solid var(--line);background:#fff;color:#4b5563;border-radius:10px;padding:9px 16px;
+    font:13px inherit;cursor:pointer}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.primary:hover{background:var(--accent-2)}
+  .btn.primary:disabled{background:#c4b5fd;border-color:#c4b5fd}
+
+  @media (max-width:900px){
+    .agents{grid-template-columns:1fr}
+    .body{flex-direction:column}
+    .form{width:auto;flex:none;border-right:0;border-bottom:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 接入对象 -->
+  <div class="agents">
+    <button class="agent on" data-agent="categraf">
+      <span class="ic">◉</span>
+      <span>
+        <span class="t">Categraf</span>
+        <span class="d">主机 · 容器 · 中间件</span>
+      </span>
+    </button>
+    <button class="agent off" disabled>
+      <span class="ic">⚡</span>
+      <span>
+        <span class="t">应用性能分析接入<span class="tag">即将支持</span></span>
+        <span class="d">应用链路 · 运行指标</span>
+      </span>
+    </button>
+  </div>
+
+  <div class="panel">
+    <div class="steps">
+      <button class="step on" data-step="1"><span class="n">1</span>安装与配置</button>
+      <button class="step" data-step="2"><span class="n">2</span>接入校验</button>
+      <button class="step" data-step="3"><span class="n">3</span>升级与卸载</button>
+    </div>
+
+    <div class="body">
+      <!-- 左：参数 -->
+      <aside class="form">
+        <div class="req-legend"><span class="req">*</span> 为必填项；关闭 Operator 时 Token 可不填</div>
+
+        <div class="f">
+          <span class="lb">部署环境</span>
+          <div class="seg">
+            <button disabled title="即将支持">主机 / 虚拟机</button>
+            <button class="on">Kubernetes</button>
+          </div>
+        </div>
+
+        <div class="f">
+          <span class="lb">部署方式</span>
+          <div class="seg" id="deploySeg">
+            <button class="on" data-deploy="online">在线（公网）</button>
+            <button data-deploy="offline">离线（内网包）</button>
+          </div>
+          <div class="hint" id="deployHint">镜像从 registry.flashcat.cloud 拉取</div>
+        </div>
+
+        <div id="offlineBox" hidden>
+          <div class="f">
+            <label for="chartPath">Chart 包地址<span class="req">*</span></label>
+            <input id="chartPath" type="text" data-k="chartPath" value="./categraf-0.2.3.tgz" />
+            <div class="hint">本地路径或 http(s) 地址</div>
+          </div>
+          <div class="f">
+            <label for="regPrefix">镜像仓库前缀<span class="req">*</span></label>
+            <input id="regPrefix" type="text" data-k="regPrefix" value="harbor.internal/flashcat" />
+            <div class="hint">镜像已推送至该仓库，tag 与 Chart 版本一致</div>
+          </div>
+        </div>
+
+        <div class="f">
+          <label for="cluster">集群名称<span class="req">*</span></label>
+          <input id="cluster" type="text" data-k="cluster" value="prod-k8s-01" />
+          <div class="hint">写入 cluster 标签，用于区分多集群</div>
+        </div>
+
+        <div class="f">
+          <label for="ns">命名空间<span class="req">*</span></label>
+          <input id="ns" type="text" data-k="ns" value="flashcat" />
+        </div>
+
+        <div class="f">
+          <label for="env">环境</label>
+          <select id="env" data-k="env">
+            <option value="prod" selected>prod</option>
+            <option value="test">test</option>
+            <option value="dev">dev</option>
+          </select>
+        </div>
+
+        <div class="f">
+          <label for="gid">业务组 ID</label>
+          <input id="gid" type="text" data-k="gid" placeholder="留空则不分组" />
+          <div class="hint">用于设备自动归组，可留空</div>
+        </div>
+
+        <div class="f">
+          <span class="lb">采集模式</span>
+          <div class="modes">
+            <button class="m on" data-mode="ds" aria-pressed="true">
+              <span class="mk"></span>
+              <span>
+                <span class="tt">DaemonSet · 每节点一个</span>
+                <span class="dd">采集节点 CPU/内存/磁盘、kubelet/cAdvisor 容器指标；挂载宿主机 /proc、/sys。</span>
+              </span>
+            </button>
+            <button class="m on" data-mode="sts" aria-pressed="true">
+              <span class="mk"></span>
+              <span>
+                <span class="tt">StatefulSet · 单副本</span>
+                <span class="dd">采集 kube-state-metrics、应用指标与集群组件，避免每节点重复采集。</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="f">
+          <span class="lb">安装 Operator</span>
+          <div class="mainopt">
+            <div class="grow">
+              <div class="dd">Node 节点下线后自动清理设备<span class="tip" data-tip="安装 categraf-operator：监听 K8s Node 删除事件并给设备打标记，观察期（默认 4 小时）后确认心跳已停，再从 Flashcat 删除设备。节点失联超过 7 天也会兜底清理。">?</span></div>
+            </div>
+            <button class="sw" data-toggle="operator" aria-pressed="true"></button>
+          </div>
+          <div id="opBox">
+            <label for="opToken" style="display:block;font-size:12px;color:#4b5563;font-weight:600;margin:8px 0 5px">API Token<span class="req">*</span></label>
+            <div class="kv" style="margin-top:0"><input id="opToken" data-k="opToken" placeholder="Flashcat API Token" /></div>
+            <div class="mainopt" style="margin-top:8px">
+              <div class="grow">
+                <div class="dd">卸载Chart包时自动清理设备<span class="tip" data-tip="卸载 Chart 包时，同时删除该集群在 Flashcat 上的 categraf 设备（节点与 KSM 都算）。只作用于本集群，不会删除业务组，也不影响其他集群。">?</span></div>
+              </div>
+              <button class="sw" data-toggle="cleanup" aria-pressed="true"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="f">
+          <label for="addr">上报地址<span class="req">*</span></label>
+          <div class="addr">
+            <input id="addr" type="text" data-k="addr" list="addrList" value="http://flashcat.internal:19000" />
+            <button class="clr" title="清空" data-clear="addr">✕</button>
+          </div>
+          <datalist id="addrList">
+            <option value="http://flashcat.internal:19000"></option>
+          </datalist>
+          <div class="hint">可从已配置地址中选择，或手动输入</div>
+        </div>
+
+        <div class="f">
+          <label for="interval">采集间隔</label>
+          <select id="interval" data-k="interval">
+            <option value="15" selected>15 s</option>
+            <option value="30">30 s</option>
+            <option value="60">60 s</option>
+          </select>
+        </div>
+
+        <details class="adv" id="adv">
+          <summary>可选配置<span class="badge" id="advBadge">默认</span></summary>
+
+          <div class="adv-h">采集范围</div>
+
+          <div class="opt" data-opt="ksm">
+            <div class="grow">
+              <div class="tt">采集 K8s 对象状态<span class="tip" data-tip="采集 Pod、Deployment、Service、PVC 等 K8s 对象的期望值与实际值。集群里已经有 KSM 的话可以关掉，避免重复部署。">?</span></div>
+              <div class="dd">部署 kube-state-metrics</div>
+            </div>
+            <button class="sw" data-toggle="ksm" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt" data-opt="appMetrics">
+            <div class="grow">
+              <div class="tt">采集应用指标<span class="tip" data-tip="给业务 Pod 打上 prometheus.io/scrape、port、path 注解，Categraf 会自动发现并采集。新增服务不用改任何配置。">?</span></div>
+              <div class="dd">加注解即可，无需改配置</div>
+            </div>
+            <button class="sw" data-toggle="appMetrics" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt sub" data-opt="defaultJob">
+            <div class="grow">
+              <div class="tt">按注解自动发现<span class="tip" data-tip="这是内置的发现任务，会扫描所有命名空间里带 prometheus.io/scrape 注解的 Pod。关闭后只执行你手动添加的抓取规则。">?</span></div>
+              <div class="dd">关闭后只跑自定义规则</div>
+            </div>
+            <button class="sw" data-toggle="defaultJob" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt" data-opt="extraJobs">
+            <div class="grow">
+              <div class="tt">按自定义规则采集<span class="tip" data-tip="中间件、第三方组件不方便加注解时，直接粘贴 Prometheus scrape_config。业务 Pod 不用改，也不用重启。">?</span></div>
+              <div class="dd">不能加注解时用</div>
+            </div>
+            <button class="sw" data-toggle="extraJobs" aria-pressed="false"></button>
+          </div>
+          <div id="jobsBox" hidden>
+            <textarea id="extraJobs" data-k="extraJobs" placeholder="# 每行一条，按 Prometheus scrape_config 书写
+- job_name: redis-exporter
+  kubernetes_sd_configs:
+    - role: endpoints"></textarea>
+            <div class="hint" style="margin-bottom:8px">可直接粘贴整段 <code>appMetrics:</code> 配置，页面会自动取 <code>extraScrapeConfigs</code> 部分并去掉公共缩进。</div>
+            <div id="jobsWarn" hidden style="margin-bottom:8px;font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:7px 9px">内容不以 <code>-</code> 开头，可能不是 list；请确认粘的是 <code>extraScrapeConfigs</code> 下的条目。</div>
+          </div>
+
+          <div class="opt" data-opt="hostNative">
+            <div class="grow">
+              <div class="tt">采集Categraf原生主机指标<span class="tip" data-tip="Categraf 自带的 cpu、mem、disk 等主机插件。Flashcat 的主机大盘默认匹配这套指标名，关掉会导致部分面板空。">?</span></div>
+              <div class="dd">Flashcat 主机大盘用这套</div>
+            </div>
+            <button class="sw" data-toggle="hostNative" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt" data-opt="cadvisor">
+            <div class="grow">
+              <div class="tt">采集容器指标<span class="tip" data-tip="从节点上的 kubelet 采集容器 CPU、内存、网络、文件系统指标，是容器监控大盘的数据来源。">?</span></div>
+              <div class="dd">来自 kubelet / cAdvisor</div>
+            </div>
+            <button class="sw" data-toggle="cadvisor" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt" data-opt="kubeProxy">
+            <div class="grow">
+              <div class="tt">采集 Kube-proxy 指标<span class="tip" data-tip="采集 iptables / ipvs 的规则数量和同步耗时，用来判断 Service 转发是否正常、规则有没有积压。">?</span></div>
+              <div class="dd">转发规则与同步耗时</div>
+            </div>
+            <button class="sw" data-toggle="kubeProxy" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt" data-opt="coreDns">
+            <div class="grow">
+              <div class="tt">采集 CoreDNS 指标<span class="tip" data-tip="采集 CoreDNS 的请求量、延迟、缓存命中率，用于排查集群内 DNS 解析慢或失败的问题。">?</span></div>
+              <div class="dd">DNS 请求量与延迟</div>
+            </div>
+            <button class="sw" data-toggle="coreDns" aria-pressed="true"></button>
+          </div>
+
+          <div class="opt" data-opt="networkPlugin">
+            <div class="grow">
+              <div class="tt">采集网络插件指标<span class="tip" data-tip="按集群实际使用的插件选择。选错不会报错，但会在 Flashcat 里看到一直 up=0 的无效目标。">?</span></div>
+              <div class="dd">Calico 或 Cilium，二选一</div>
+              <select id="netPlugin">
+                <option value="none" selected>不采集</option>
+                <option value="calico">Calico</option>
+                <option value="cilium">Cilium</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="opt" data-opt="controlPlane">
+            <div class="grow">
+              <div class="tt">采集控制平面指标<span class="tip" data-tip="apiserver 走集群内置 Service，开箱即可采集；scheduler、controller-manager、etcd 走组件自身端口，需要先放开监听（--bind-address=0.0.0.0、etcd --listen-metrics-urls），否则会一直是 up=0。">?</span></div>
+              <div class="dd">apiserver / etcd 等</div>
+            </div>
+            <button class="sw" data-toggle="controlPlane" aria-pressed="false"></button>
+          </div>
+
+          <div class="adv-h">上报与标识</div>
+
+          <div class="opt" data-opt="labels">
+            <div class="grow">
+              <div class="tt">设备自定义标签<span class="tip" data-tip="会加到该集群所有上报指标上，常用于区分地域、负责人。env、cluster、categraf 是保留标签，不能覆盖。">?</span></div>
+              <div class="dd">给所有指标打上 region 等</div>
+            </div>
+            <button class="sw" data-toggle="labels" aria-pressed="false"></button>
+          </div>
+          <div id="labelsBox" hidden>
+            <div id="kvList">
+              <div class="kv"><input data-kv-key placeholder="key" /><input data-kv-val placeholder="value" /><button data-kv-remove title="删除">×</button></div>
+            </div>
+            <button class="kv-add" data-kv-add>+ 添加标签</button>
+          </div>
+
+          <div class="opt" data-opt="ident">
+            <div class="grow">
+              <div class="tt">设备标识<span class="tip" data-tip="决定设备在 Flashcat 里怎么显示。服务拓扑要求必须用节点名；多集群节点重名时可选『集群名-节点名』，代价是服务拓扑不可用。">?</span></div>
+              <div class="dd" id="identHint">默认用节点名</div>
+              <select id="ident">
+                <option value="nodeName" selected>节点名（推荐）</option>
+                <option value="prefixed">集群名-节点名</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="opt" data-opt="remoteWrite">
+            <div class="grow">
+              <div class="tt">写入认证<span class="tip" data-tip="Flashcat 的 remote write 接口开启 Basic Auth 时才需要。留空表示不发送认证信息；如果服务端要求而这里为空，指标会被拒绝，表现为设备在线但没有数据。">?</span></div>
+              <div class="dd">服务端要求认证时填</div>
+              <div class="kv">
+                <input id="rwUser" data-k="rwUser" placeholder="用户名" value="user001" />
+                <input id="rwPass" data-k="rwPass" placeholder="密码（留空不写）" />
+              </div>
+            </div>
+          </div>
+
+          <div class="adv-h">镜像版本</div>
+
+          <div class="opt" data-opt="imgVer">
+            <div class="grow">
+              <div class="tt">Categraf 版本<span class="tip" data-tip="同时用于节点采集与集群采集两个镜像，标签分别是 servicemap-v{版本} 与 v{版本}。必须与镜像仓库中实际存在的标签一致，否则 Pod 会 ImagePullBackOff。">?</span></div>
+              <div class="dd">节点与集群采集共用</div>
+              <input type="text" data-k="imgVer" value="0.5.45" placeholder="0.5.45" style="margin-top:6px" />
+            </div>
+          </div>
+
+          <div class="opt" data-opt="ksmVer">
+            <div class="grow">
+              <div class="tt">kube-state-metrics 版本<span class="tip" data-tip="仅安装 kube-state-metrics 时生效。KSM 2.x 对宿主机 Kubernetes 版本有要求，老集群请先确认该版本可用。">?</span></div>
+              <div class="dd">仅安装 KSM 时生效</div>
+              <input type="text" data-k="ksmVer" value="2.19.1" placeholder="2.19.1" style="margin-top:6px" />
+            </div>
+          </div>
+
+          <div class="opt" data-opt="opVer">
+            <div class="grow">
+              <div class="tt">Operator 版本<span class="tip" data-tip="仅开启「安装 Operator」时生效，必须是 categraf-operator 仓库里存在的 tag。">?</span></div>
+              <div class="dd">仅开启 Operator 时生效</div>
+              <input type="text" data-k="opVer" value="0.0.7" placeholder="0.0.7" style="margin-top:6px" />
+            </div>
+          </div>
+
+          <div class="adv-h">资源与调度</div>
+
+          <div class="opt" data-opt="res">
+            <div class="grow">
+              <div class="tt">资源规格<span class="tip" data-tip="决定各容器的 CPU / 内存请求与上限。小、中、大是成套预设；中档沿用 Chart 默认，只把 KSM Agent 的内存上限提到 2Gi。选自定义可分别设置节点采集（DaemonSet）、集群采集（StatefulSet）与 kube-state-metrics（Deployment），只显示当前启用的那些。">?</span></div>
+              <div class="dd">按节点规格选，中为推荐</div>
+              <select id="res">
+                <option value="s">小 · 100m / 256Mi</option>
+                <option value="m" selected>中 · 200m / 512Mi</option>
+                <option value="l">大 · 500m / 1Gi</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+          </div>
+          <div id="resCustom" hidden>
+            <div id="resCustomNode">
+              <div class="kw">节点采集 · DaemonSet</div>
+              <div class="kv"><span class="kvl">请求</span><input data-k="reqCpu" value="200m" placeholder="cpu" /><input data-k="reqMem" value="512Mi" placeholder="memory" /></div>
+              <div class="kv"><span class="kvl">上限</span><input data-k="limCpu" value="2000m" placeholder="cpu" /><input data-k="limMem" value="2Gi" placeholder="memory" /></div>
+            </div>
+            <div id="resCustomKsm">
+              <div class="kw">集群采集 · StatefulSet</div>
+              <div class="kv"><span class="kvl">请求</span><input data-k="ksmReqCpu" value="500m" placeholder="cpu" /><input data-k="ksmReqMem" value="512Mi" placeholder="memory" /></div>
+              <div class="kv"><span class="kvl">上限</span><input data-k="ksmLimCpu" value="1000m" placeholder="cpu" /><input data-k="ksmLimMem" value="2Gi" placeholder="memory" /></div>
+            </div>
+            <div id="resCustomKs" hidden>
+              <div class="kw">kube-state-metrics · Deployment</div>
+              <div class="kv"><span class="kvl">请求</span><input data-k="ksReqCpu" value="200m" placeholder="cpu" /><input data-k="ksReqMem" value="256Mi" placeholder="memory" /></div>
+              <div class="kv"><span class="kvl">上限</span><input data-k="ksLimCpu" value="500m" placeholder="cpu" /><input data-k="ksLimMem" value="1Gi" placeholder="memory" /></div>
+            </div>
+            <div class="hint" style="margin:6px 0 8px">按当前启用的采集模式显示对应分组；中档等于 Chart 默认值</div>
+          </div>
+
+          <div class="opt" data-opt="batch">
+            <div class="grow">
+              <div class="tt">写入批量<span class="tip" data-tip="每次批量发送的数据点数，默认节点 2000、集群 1000。调大能提高吞吐，但内存占用也上升。">?</span></div>
+              <div class="dd">写入积压时调大</div>
+              <select id="batch">
+                <option value="">默认（2000 / 1000）</option>
+                <option value="1000">1000</option>
+                <option value="5000">5000</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="opt" data-opt="split">
+            <div class="grow">
+              <div class="tt">集群侧抓取间隔<span class="tip" data-tip="主机采集间隔在左栏统一设置；这里单独设置集群侧（KSM、应用、组件）的抓取周期，与左侧的主机采集间隔互不影响。">?</span></div>
+              <div class="dd">KSM 与应用指标的周期</div>
+            </div>
+            <button class="sw" data-toggle="split" aria-pressed="false"></button>
+          </div>
+          <div class="opt sub" id="splitBox" hidden>
+            <div class="grow">
+              <select id="ksmInterval">
+                <option value="30">30 s</option>
+                <option value="60" selected>60 s</option>
+                <option value="120">120 s</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="adv-h">运行组件与兼容</div>
+
+          <div class="opt" data-opt="compliant">
+            <div class="grow">
+              <div class="tt">非特权模式<span class="tip" data-tip="开启后容器不再以 privileged 运行、不挂载宿主机目录。代价：命令通道不可用，服务拓扑降级为轮询（拿不到 L7 调用关系）。">?</span></div>
+              <div class="dd">关闭特权容器与命令通道</div>
+            </div>
+            <button class="sw" data-toggle="compliant" aria-pressed="false"></button>
+          </div>
+        </details>
+
+        <div class="note">镜像与 Chart 由平台管理员预置，随部署包提供，无需手动准备。</div>
+      </aside>
+
+      <!-- 右：配置与命令 -->
+      <main class="preview" id="preview"></main>
+    </div>
+
+    <div class="foot">
+      <button class="btn" id="prev" disabled>上一步</button>
+      <button class="btn primary" id="next">进入接入校验 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var DEFAULTS = {
+    labels: false, operator: true, ksm: true, appMetrics: true,
+    defaultJob: true, hostNative: true, cadvisor: true, kubeProxy: true,
+    coreDns: true, networkPlugin: "none", controlPlane: false, extraJobs: false,
+    split: false, compliant: false
+  };
+  var RES = {
+    s: {
+      node: { req: ["100m", "256Mi"], lim: ["500m", "1Gi"] },
+      ksm: { req: ["200m", "256Mi"], lim: ["500m", "1Gi"] },
+      ks: { req: ["100m", "128Mi"], lim: ["500m", "1Gi"] }
+    },
+    l: {
+      node: { req: ["500m", "1Gi"], lim: ["3000m", "4Gi"] },
+      ksm: { req: ["1000m", "2Gi"], lim: ["2000m", "3Gi"] },
+      ks: { req: ["500m", "1Gi"], lim: ["1000m", "2Gi"] }
+    }
+  };
+  var S = {
+    online: true,
+    syncTool: "docker",
+    chartPath: "./categraf-0.2.3.tgz",
+    regPrefix: "harbor.internal/flashcat",
+    cluster: "prod-k8s-01",
+    ns: "flashcat",
+    env: "prod",
+    gid: "",
+    addr: "http://flashcat.internal:19000",
+    interval: "15",
+    opToken: "",
+    ident: "nodeName",
+    rwUser: "user001",
+    rwPass: "",
+    res: "m",
+    reqCpu: "200m", reqMem: "512Mi", limCpu: "2000m", limMem: "2Gi",
+    imgVer: "0.5.45", ksmVer: "2.19.1", opVer: "0.0.7",
+    ksmReqCpu: "500m", ksmReqMem: "512Mi", ksmLimCpu: "1000m", ksmLimMem: "2Gi",
+    ksReqCpu: "200m", ksReqMem: "256Mi", ksLimCpu: "500m", ksLimMem: "1Gi",
+    batch: "",
+    ksmInterval: "60",
+    extraJobs: "",
+    opt: (function () {
+      var o = JSON.parse(JSON.stringify(DEFAULTS));
+      o.cleanup = true;          // 主表单控件，不计入"已改"统计
+      return o;
+    })(),
+    ds: true, sts: true, step: 1
+  };
+  var preview = document.getElementById("preview");
+  var prevBtn = document.getElementById("prev");
+  var nextBtn = document.getElementById("next");
+  var offlineBox = document.getElementById("offlineBox");
+  var adv = document.getElementById("adv");
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function hlYaml(code) {
+    var s = esc(code);
+    s = s.replace(/^(\s*)([A-Za-z0-9_.-]+)(:)/gm, function (m, a, b) { return a + '<span class="k">' + b + "</span>:"; });
+    s = s.replace(/(&quot;[^&]*?&quot;)/g, '<span class="s">$1</span>');
+    s = s.replace(/(#.*)$/gm, '<span class="c">$1</span>');
+    return s;
+  }
+  function hlShell(code) {
+    var s = esc(code);
+    s = s.replace(/\b(helm|kubectl)\b/g, '<span class="cmd">$1</span>');
+    s = s.replace(/(#.*)$/gm, '<span class="c">$1</span>');
+    return s;
+  }
+  function codeBlock(name, lang, html, dl) {
+    var btn = '<button data-copy>⧉ 复制</button>';
+    if (dl) btn += '<button data-download="' + dl + '" style="margin-left:6px">↓ 下载</button>';
+    return '<div class="code"><div class="hd"><span class="nm">' + name + '</span><span>' + lang +
+      '</span>' + btn + '</div><pre>' + html + "</pre></div>";
+  }
+  var DEFAULT_IMG = { ver: "0.5.45", ksmVer: "2.19.1", opVer: "0.0.7" };
+  function imgRegistry() {
+    return S.online ? "registry.flashcat.cloud/public" : S.regPrefix.replace(/\/+$/, "");
+  }
+  function images() {
+    var r = imgRegistry();
+    return {
+      node: r + "/categraf_ent:servicemap-v" + S.imgVer,
+      ksm: r + "/categraf_ent:v" + S.imgVer,
+      ks: r + "/kube-state-metrics/kube-state-metrics:v" + S.ksmVer,
+      op: r + "/categraf-operator:" + S.opVer
+    };
+  }
+  // 离线必须写 image；在线只有改了版本才写（否则会盖掉 Chart 默认值）
+  function needImg(kind) {
+    if (!S.online) return true;
+    if (kind === "node" || kind === "ksm") return S.imgVer !== DEFAULT_IMG.ver;
+    if (kind === "ks") return S.ksmVer !== DEFAULT_IMG.ksmVer;
+    if (kind === "op") return S.opVer !== DEFAULT_IMG.opVer;
+    return false;
+  }
+
+  function getLabels() {
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll("#kvList .kv"), function (row) {
+      var k = row.querySelector("[data-kv-key]").value.trim();
+      var v = row.querySelector("[data-kv-val]").value.trim();
+      if (k) out.push([k, v]);
+    });
+    return out;
+  }
+  function resLines(pad, p) {
+    return [
+      pad + "resources:",
+      pad + "  requests:",
+      pad + "    cpu: " + p.req[0],
+      pad + "    memory: " + p.req[1],
+      pad + "  limits:",
+      pad + "    cpu: " + p.lim[0],
+      pad + "    memory: " + p.lim[1]
+    ];
+  }
+
+  function valuesYaml() {
+    var out = [];
+    if (!S.online) out.push("# 离线部署：Chart 与镜像均来自内网");
+
+    var cat = ["categraf:"];
+    cat.push('  serverAddr: "' + S.addr + '"');
+    cat.push('  clusterName: "' + S.cluster + '"');
+    cat.push('  env: "' + S.env + '"');
+    if (S.gid.trim()) cat.push('  heartbeatGid: "' + S.gid.trim() + '"');
+    cat.push("  config:");
+    cat.push("    interval: " + S.interval);
+    var labels = S.opt.labels ? getLabels() : [];
+    if (labels.length) {
+      cat.push("  customLabels:");
+      labels.forEach(function (kv) { cat.push("    " + kv[0] + ': "' + kv[1] + '"'); });
+    }
+    if (S.rwPass.trim()) {
+      cat.push('  remoteWriteUser: "' + (S.rwUser.trim() || "user001") + '"');
+      cat.push('  remoteWritePassword: "' + S.rwPass + '"');
+    }
+    if (S.opt.batch) {
+      cat.push("  writer:");
+      cat.push("    batch: " + S.opt.batch);
+    }
+    if (S.opt.split && S.sts) {
+      cat.push("  prometheus:              # 集群侧抓取周期");
+      cat.push("    scrapeInterval: " + S.ksmInterval);
+    }
+    out = out.concat(cat);
+    out.push("");
+
+    var imgOp = images().op;
+    out.push("operator:");
+    out.push("  enabled: " + S.opt.operator);
+    if (S.opt.operator) {
+      out.push('  userToken: "' + (S.opToken.trim() || "<FLASHCAT_USER_TOKEN>") + '"');
+      if (needImg("op")) out.push('  image: "' + imgOp + '"');
+      out.push("  cleanup:");
+      out.push("    nodeCategraf: " + S.opt.cleanup);
+      out.push("    ksmCategraf: " + (S.opt.cleanup && S.sts));
+    }
+    out.push("");
+
+    var img = images();
+    out.push("nodeCategraf:");
+    out.push("  enabled: " + S.ds);
+    if (S.ds) {
+      if (needImg("node")) out.push('  image: "' + img.node + '"');
+      out.push("  hostname: " + (S.ident === "prefixed" ? '"${cluster}-${nodeName}"' : "nodeName"));
+      if (S.opt.compliant) {
+        out.push("  securityContext:");
+        out.push("    privileged: false");
+        out.push("  hostExec:");
+        out.push("    enabled: false");
+      }
+      out.push("  inputs:");
+      out.push("    cadvisor: " + S.opt.cadvisor);
+      out.push("    hostNative:");
+      out.push("      enabled: " + S.opt.hostNative);
+      if (S.res === "custom") {
+        out.push.apply(out, resLines("  ", { req: [S.reqCpu, S.reqMem], lim: [S.limCpu, S.limMem] }));
+      } else if (RES[S.res]) {
+        out.push.apply(out, resLines("  ", RES[S.res].node));
+      }
+    }
+    out.push("");
+
+    out.push("ksmCategraf:");
+    out.push("  enabled: " + S.sts);
+    if (S.sts) {
+      out.push("  replicas: 1");
+      if (needImg("ksm")) out.push('  image: "' + img.ksm + '"');
+      if (S.res === "s" || S.res === "l") {
+        out.push.apply(out, resLines("  ", RES[S.res].ksm));
+      } else if (S.res === "custom") {
+        out.push.apply(out, resLines("  ", { req: [S.ksmReqCpu, S.ksmReqMem], lim: [S.ksmLimCpu, S.ksmLimMem] }));
+      } else {
+        out.push("  resources:               # 仅覆盖 Chart 默认的 1.5Gi，其余沿用默认");
+        out.push("    limits:");
+        out.push("      memory: 2Gi");
+      }
+    }
+    var ksmOn = S.sts && S.opt.ksm;
+    out.push("kubeStateMetrics:");
+    out.push("  enabled: " + ksmOn);
+    if (ksmOn && needImg("ks")) out.push('  image: "' + img.ks + '"');
+    if (ksmOn) {
+      if (S.res === "custom") {
+        out.push.apply(out, resLines("  ", { req: [S.ksReqCpu, S.ksReqMem], lim: [S.ksLimCpu, S.ksLimMem] }));
+      } else if (RES[S.res]) {
+        out.push.apply(out, resLines("  ", RES[S.res].ks));
+      }
+    }
+
+    var jobs = normalizeJobs(S.extraJobs || "");
+    if (S.sts) {
+      var appOn = S.opt.appMetrics || !!jobs;
+      out.push("appMetrics:");
+      out.push("  enabled: " + appOn);
+      if (appOn) {
+        out.push("  defaultJob:");
+        out.push("    enabled: " + S.opt.defaultJob);
+        if (jobs) {
+          out.push("  extraScrapeConfigs:");
+          jobs.split("\n").forEach(function (line) {
+            out.push(line.trim() === "" ? "" : "    " + line);
+          });
+        }
+      }
+      out.push("coreDns:");
+      out.push("  enabled: " + S.opt.coreDns);
+      out.push("networkPlugin:");
+      out.push("  calico:");
+      out.push("    enabled: " + (S.opt.networkPlugin === "calico"));
+      out.push("  cilium:");
+      out.push("    enabled: " + (S.opt.networkPlugin === "cilium"));
+      out.push("controlPlane:");
+      out.push("  enabled: " + S.opt.controlPlane);
+    }
+    if (S.ds) {
+      out.push("kubeProxy:");
+      out.push("  enabled: " + S.opt.kubeProxy);
+    }
+    return out.join("\n") + "\n";
+  }
+
+  // 粘贴内容规范化：兼容「整段 appMetrics 配置」与「只有 list 项」两种粘贴方式
+  function normalizeJobs(raw) {
+    var lines = String(raw || "").replace(/\t/g, "  ").split("\n");
+    var idx = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (/^\s*extraScrapeConfigs\s*:/.test(lines[i])) idx = i;
+    }
+    if (idx >= 0) lines = lines.slice(idx + 1);
+    var min = Infinity;
+    lines.forEach(function (l) {
+      if (l.trim() === "") return;
+      var m = l.match(/^\s*/)[0].length;
+      if (m < min) min = m;
+    });
+    if (!isFinite(min)) min = 0;
+    lines = lines.map(function (l) { return l.trim() === "" ? "" : l.slice(min); });
+    while (lines.length && lines[0].trim() === "") lines.shift();
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    return lines.join("\n");
+  }
+  function jobsLooksLikeList(t) {
+    if (!t) return true;
+    return /^\s*-\s/.test(t);
+  }
+
+  function envCheckCmd() {
+    return [
+      "# 版本：Kubernetes 1.19 ~ 1.37（1.19 以下未验证；1.38 及以上会被 Helm 拒绝），Helm >= 3.0",
+      "kubectl version --short",
+      "helm version --short",
+      "",
+      "# 节点数：部署后 DaemonSet 副本数应等于它",
+      "kubectl get nodes --no-headers | wc -l"
+    ].join("\n") + "\n";
+  }
+
+  function upgradeCmd() {
+    var src = S.online
+      ? "oci://registry.flashcat.cloud/public/charts/categraf \\\n  --version 0.2.3 \\\n"
+      : S.chartPath + " \\\n";
+    var L = [
+      "# 1) 先备份当前 values（回滚时用）",
+      "helm -n " + S.ns + " get values categraf > categraf-values.backup.yaml",
+      "",
+      "# 2) 升级",
+      "helm upgrade categraf " + src + "  -n " + S.ns + " -f values.yaml"
+    ];
+    if (S.ds) L.push("", "# 3) 观察滚动", "kubectl -n " + S.ns + " rollout status ds/categraf");
+    if (S.sts) {
+      if (!S.ds) L.push("", "# 3) 观察滚动");
+      L.push("kubectl -n " + S.ns + " rollout status sts/categraf-ksm");
+    }
+    L.push("", "# 回滚到上一版本", "helm rollback categraf <REVISION> -n " + S.ns);
+    return L.join("\n") + "\n";
+  }
+  function uninstallCmd() {
+    return [
+      "# 默认卸载：会同时清理本集群在 Flashcat 上的设备",
+      "helm uninstall categraf -n " + S.ns + " --wait",
+      "",
+      "# 只删工作负载、保留设备：加 --no-hooks",
+      "helm uninstall categraf -n " + S.ns + " --no-hooks",
+      "",
+      "# 或者升级前先把清理关掉",
+      "helm upgrade categraf " + (S.online ? "oci://registry.flashcat.cloud/public/charts/categraf \\\n  --version 0.2.3 \\\n" : S.chartPath + " \\\n") +
+        "  -n " + S.ns + " -f values.yaml \\\n" +
+        "  --set operator.cleanup.nodeCategraf=false \\\n" +
+        "  --set operator.cleanup.ksmCategraf=false"
+    ].join("\n") + "\n";
+  }
+
+  function imagePairs() {
+    var r = S.regPrefix.replace(/\/+$/, "");
+    var list = [];
+    if (S.ds) list.push("categraf_ent:servicemap-v" + S.imgVer);
+    if (S.sts) {
+      list.push("categraf_ent:v" + S.imgVer);
+      if (S.opt.ksm) list.push("kube-state-metrics/kube-state-metrics:v" + S.ksmVer);
+    }
+    if (S.opt.operator) list.push("categraf-operator:" + S.opVer);
+    return list.map(function (p) { return [p, r + "/" + p]; });
+  }
+
+  function chartSyncCmd() {
+    var host = (S.regPrefix.split("/")[0] || "").trim();
+    var lines = [
+      "# 在可联网的机器上拉取 Chart",
+      "helm pull oci://registry.flashcat.cloud/public/charts/categraf --version 0.2.3",
+      "",
+      "# 可选：推送到内网 OCI 仓库"
+    ];
+    if (host) {
+      lines.push("helm registry login " + host);
+      lines.push("helm push categraf-0.2.3.tgz oci://" + host + "/charts");
+    } else {
+      lines.push("helm registry login <内网仓库地址>");
+      lines.push("helm push categraf-0.2.3.tgz oci://<内网仓库地址>/charts");
+    }
+    return lines.join("\n") + "\n";
+  }
+  function imageSyncCmd() {
+    var pairs = imagePairs();
+    if (!pairs.length) return "";
+    var host = (S.regPrefix.split("/")[0] || "").trim() || "<内网仓库地址>";
+    var BS = "\\";
+    var L = [];
+    if (S.syncTool === "skopeo") {
+      L.push("# 先登录内网仓库");
+      L.push("skopeo login " + host);
+      L.push("# 内网仓库是 HTTP 或自签证书时，给每条 copy 加 --dest-tls-verify=false");
+      L.push("");
+      pairs.forEach(function (pp, i) {
+        L.push("skopeo copy --all " + BS);
+        L.push("  docker://registry.flashcat.cloud/public/" + pp[0] + " " + BS);
+        L.push("  docker://" + pp[1]);
+        if (i < pairs.length - 1) L.push("");
+      });
+    } else {
+      L.push("# 内网仓库需要认证时先登录");
+      L.push("docker login " + host);
+      L.push("");
+      pairs.forEach(function (pp, i) {
+        var src = "registry.flashcat.cloud/public/" + pp[0];
+        L.push("docker pull " + src);
+        L.push("docker tag  " + src + " " + pp[1]);
+        L.push("docker push " + pp[1]);
+        if (i < pairs.length - 1) L.push("");
+      });
+      L.push("# docker pull 只拉当前机器架构；多架构集群用 --platform linux/arm64 再走一遍");
+    }
+    return L.join("\n") + "\n";
+  }
+
+  function cmdText() {
+    var c = "# 前提：values.yaml 已在当前目录（上一步「下载」或复制保存）\n";
+    if (S.online) {
+      c += "# 从公网仓库拉取 Chart\n" +
+        "helm upgrade --install categraf \\\n" +
+        "  oci://registry.flashcat.cloud/public/charts/categraf \\\n" +
+        "  --version 0.2.3 \\\n" +
+        "  -n " + S.ns + " --create-namespace \\\n" +
+        "  -f values.yaml\n";
+    } else {
+      c += "# 使用离线包内的 Chart（无需访问公网）\n" +
+        "helm upgrade --install categraf " + S.chartPath + " \\\n" +
+        "  -n " + S.ns + " --create-namespace \\\n" +
+        "  -f values.yaml\n";
+    }
+    if (S.ds) {
+      c += "\n# 确认每个节点都有 Pod\n" +
+        "kubectl -n " + S.ns + " rollout status ds/categraf\n" +
+        "kubectl -n " + S.ns + " get pods -o wide -l component=categraf\n";
+    }
+    if (S.sts) {
+      c += "\n# 确认副本就绪\n" +
+        "kubectl -n " + S.ns + " rollout status sts/categraf-ksm\n" +
+        "kubectl -n " + S.ns + " get pods -l component=categraf-ksm\n";
+    }
+    return c;
+  }
+
+  function verifyList() {
+    var items = [];
+    var devTxt = (S.ds && S.sts)
+      ? "（每台节点一个，名称为节点名；另有一个 <code>" + esc(S.cluster) + "-categraf-ksm-0</code>）"
+      : S.ds
+        ? "（每台节点一个，名称为节点名）"
+        : "（一个：<code>" + esc(S.cluster) + "-categraf-ksm-0</code>）";
+    items.push({ t: "设备在线", d: "Flashcat「设备列表」出现该集群设备，<code>target_up = 2</code>" + devTxt });
+    if (S.ds) {
+      items.push({ t: "主机指标", d: '查 <code>node_load1{cluster="' + esc(S.cluster) + '"}</code> 有数据' });
+      items.push({ t: "容器指标", d: '查 <code>container_cpu_usage_seconds_total{cluster="' + esc(S.cluster) + '"}</code> 有数据' });
+    }
+    if (S.sts && S.opt.ksm) {
+      items.push({ t: "KSM 指标", d: '查 <code>kube_pod_status_phase{cluster="' + esc(S.cluster) + '"}</code> 有数据' });
+    }
+    if (S.sts && (S.opt.appMetrics || (S.extraJobs || "").trim()) && (S.opt.defaultJob || (S.extraJobs || "").trim())) {
+      items.push({ t: "应用指标", d: '查 <code>up{job="app-metrics"}</code> 或自定义 job 为 1' });
+    }
+    if (S.opt.compliant) {
+      items.push({ t: "能力确认", d: "合规模式下服务拓扑降级为轮询、任务通道不可用，属预期" });
+    }
+    return items;
+  }
+
+  function syncAdv() {
+    var show = {
+      labels: true, ident: S.ds, remoteWrite: S.sts, res: true, batch: true,
+      split: S.sts, compliant: S.ds,
+      ksm: S.sts, appMetrics: S.sts,
+      defaultJob: S.sts && S.opt.appMetrics,
+      extraJobs: S.sts,
+      hostNative: S.ds, cadvisor: S.ds, kubeProxy: S.ds,
+      coreDns: S.sts, networkPlugin: S.sts, controlPlane: S.sts
+    };
+    Object.keys(show).forEach(function (k) {
+      var el = adv.querySelector('[data-opt="' + k + '"]');
+      if (el) el.hidden = !show[k];
+    });
+    ["labelsBox", "opBox", "jobsBox", "splitBox"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = true;
+    });
+    var rc = document.getElementById("resCustom"); if (rc) rc.hidden = S.res !== "custom";
+    var rn = document.getElementById("resCustomNode"); if (rn) rn.hidden = !S.ds;
+    var rk = document.getElementById("resCustomKsm"); if (rk) rk.hidden = !S.sts;
+    var rks = document.getElementById("resCustomKs"); if (rks) rks.hidden = !(S.sts && S.opt.ksm);
+    var lb = document.getElementById("labelsBox"); if (lb) lb.hidden = !S.opt.labels;
+    var ob = document.getElementById("opBox"); if (ob) ob.hidden = !S.opt.operator;
+    var jb = document.getElementById("jobsBox"); if (jb) jb.hidden = !(S.sts && S.opt.extraJobs);
+    var jw = document.getElementById("jobsWarn");
+    if (jw) {
+      var nj = normalizeJobs(S.extraJobs || "");
+      jw.hidden = !(nj && !jobsLooksLikeList(nj));
+    }
+    var sb = document.getElementById("splitBox"); if (sb) sb.hidden = !(S.sts && S.opt.split);
+    var net = document.getElementById("netPlugin"); if (net) net.value = S.opt.networkPlugin;
+    [["imgVer", S.ds || S.sts], ["ksmVer", S.sts && S.opt.ksm], ["opVer", !!S.opt.operator]].forEach(function (x) {
+      var el = adv.querySelector('[data-opt="' + x[0] + '"]');
+      if (el) el.hidden = !x[1];
+    });
+    var ih = document.getElementById("identHint");
+    if (ih) ih.textContent = S.ident === "prefixed" ? "加了集群前缀后服务拓扑不可用" : "服务拓扑要求用节点名";
+
+    Array.prototype.forEach.call(document.querySelectorAll("[data-toggle]"), function (b) {
+      var k = b.getAttribute("data-toggle");
+      var on = !!S.opt[k];
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+
+    var badge = document.getElementById("advBadge");
+    if (badge) {
+      var n = 0;
+      Object.keys(DEFAULTS).forEach(function (k) { if (S.opt[k] !== DEFAULTS[k]) n++; });
+      if (S.rwPass.trim()) n++;
+      if (S.gid.trim()) n++;
+      if (S.ident !== "nodeName") n++;
+      if (S.res !== "m") n++;
+      if (S.batch) n++;
+      if ((S.extraJobs || "").trim()) n++;
+      badge.textContent = n ? ("已改 " + n + " 项") : "默认";
+      badge.classList.toggle("dirty", n > 0);
+    }
+  }
+
+  function render() {
+    offlineBox.hidden = S.online;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-deploy]"), function (b) {
+      b.classList.toggle("on", (b.getAttribute("data-deploy") === "online") === S.online);
+    });
+    var hint = document.getElementById("deployHint");
+    if (hint) hint.textContent = S.online ? "镜像从 registry.flashcat.cloud 拉取" : "Chart 与镜像均来自内网，无需访问公网";
+    syncAdv();
+
+    if (S.step === 1) {
+      var h = "", n = 1;
+      h += '<div class="sec"><h3><span class="n">' + (n++) + '</span>环境要求</h3>' +
+        '<p class="sub">装之前确认三项，不满足先别往下走。</p>' +
+        '<ul class="tight">' +
+        '<li><b>Kubernetes</b> 1.19 ~ 1.37<span style="color:#9ca3af;font-weight:400">（1.19 以下未验证）</span></li>' +
+        '<li><b>Helm</b> ≥ 3.0，<b>kubectl</b> 能连上目标集群</li>' +
+        '<li>节点能访问 Flashcat 地址 <code>' + esc(S.addr) + '</code></li>' +
+        '</ul>' +
+        codeBlock("检查命令", "shell", hlShell(envCheckCmd())) +
+        '<p class="hint" style="margin-top:8px">版本不满足时 Helm 会直接拒绝安装；网络不通会导致设备一直离线。遇到问题请联系 Flashcat 技术人员。</p></div>';
+      if (!S.online) {
+        h += '<div class="sec"><h3><span class="n">' + (n++) + '</span>同步 Chart 与镜像</h3>' +
+          '<p class="sub">在可联网的机器执行，把物料推进内网仓库。</p>' +
+          codeBlock("同步 Chart", "shell", hlShell(chartSyncCmd())) +
+          (imagePairs().length
+            ? '<div class="mini"><button data-sync="docker" class="' + (S.syncTool === "docker" ? "on" : "") + '">docker pull / tag / push</button><button data-sync="skopeo" class="' + (S.syncTool === "skopeo" ? "on" : "") + '">skopeo</button></div>'
+              + codeBlock("同步镜像", "shell", hlShell(imageSyncCmd()))
+            : "") +
+          '<p class="hint" style="margin-top:8px">没有 skopeo 时可用 docker pull / tag / push；完全没有内网仓库时，用 docker save 打包后拷入并 load。<br>已推送到内网 OCI 仓库时，把左栏「Chart 包地址」改成 <code>oci://&lt;仓库&gt;/charts/categraf</code>，部署命令会自动带上 <code>--version 0.2.3</code>。</p></div>';
+      }
+      h += '<div class="sec"><h3><span class="n">' + (n++) + '</span>准备配置</h3>' +
+        '<p class="sub">左侧参数会实时写入配置；点「↓ 下载」存成 values.yaml，或复制后自行保存。</p>' +
+        codeBlock("values.yaml", "yaml", hlYaml(valuesYaml()), "values.yaml") +
+        '<p class="hint" style="margin-top:8px">保存位置：与部署命令同一个目录。文件不存在时，下面的 <code>-f values.yaml</code> 会报 <code>open values.yaml: no such file</code>。</p></div>';
+      h += '<div class="sec"><h3><span class="n">' + (n++) + '</span>部署并检查</h3>' +
+        '<p class="sub">' + (S.online
+          ? (S.ds ? "Pod 主机名取自 spec.nodeName，无需逐台配置。" : "单副本运行，避免重复采集。")
+          : "Chart 包与镜像需已按上一步同步到内网。") + "</p>" +
+        codeBlock("部署命令", "shell", hlShell(cmdText())) +
+        '<p class="hint" style="margin-top:8px">不想落文件可改用 <code>--set</code>（如 <code>--set categraf.serverAddr=…</code>），但参数多时容易漏，建议还是用 values.yaml。</p></div>';
+      preview.innerHTML = h;
+      prevBtn.disabled = true;
+      nextBtn.textContent = "进入接入校验 →";
+    } else if (S.step === 3) {
+      var u = "";
+      u += '<div class="sec"><h3><span class="n">1</span>升级</h3>' +
+        '<p class="sub">改版本或改配置都用同一条命令，Helm 幂等。</p>' +
+        codeBlock("升级命令", "shell", hlShell(upgradeCmd())) + "</div>";
+      u += '<div class="sec"><h3><span class="n">2</span>卸载</h3>' +
+        '<p class="sub">卸载会按「安装 Operator」块里的清理开关处理设备。</p>' +
+        codeBlock("卸载命令", "shell", hlShell(uninstallCmd())) +
+        '<p class="hint" style="margin-top:8px">清理只作用于本集群（按集群名匹配），不会删除业务组，也不影响其他集群。若清理卡住，多半是 Flashcat 侧不可达或 token 无效，可用 <code>--no-hooks</code> 跳过 hook。</p></div>';
+      preview.innerHTML = u;
+      prevBtn.disabled = false;
+      nextBtn.textContent = "完成";
+      nextBtn.disabled = true;
+      return;
+    } else {
+      var list = verifyList();
+      var v = '<div class="sec"><h3><span class="n">✓</span>接入校验</h3>' +
+        '<p class="sub">部署完成后，确认下面几项即可。</p><div class="vlist">';
+      list.forEach(function (it) {
+        v += '<div class="v"><span class="dot"></span><div><div class="vt">' + it.t +
+          '</div><div class="vd">' + it.d + "</div></div></div>";
+      });
+      v += "</div></div>";
+      preview.innerHTML = v;
+      prevBtn.disabled = false;
+      nextBtn.textContent = "查看升级与卸载 →";
+    }
+
+    var ok = S.cluster.trim() && S.ns.trim() && S.addr.trim() &&
+      (S.online || (S.chartPath.trim() && S.regPrefix.trim())) &&
+      (!S.opt.operator || S.opToken.trim()) &&
+      S.imgVer.trim() &&
+      (!(S.sts && S.opt.ksm) || S.ksmVer.trim()) &&
+      (!S.opt.operator || S.opVer.trim()) &&
+      (S.res !== "custom" ||
+        (!S.ds || (S.reqCpu.trim() && S.reqMem.trim() && S.limCpu.trim() && S.limMem.trim())) &&
+        (!S.sts || (S.ksmReqCpu.trim() && S.ksmReqMem.trim() && S.ksmLimCpu.trim() && S.ksmLimMem.trim())) &&
+        (!(S.sts && S.opt.ksm) || (S.ksReqCpu.trim() && S.ksReqMem.trim() && S.ksLimCpu.trim() && S.ksLimMem.trim())));
+    nextBtn.disabled = !ok;
+  }
+
+  function kvRow() {
+    var d = document.createElement("div");
+    d.className = "kv";
+    d.innerHTML = '<input data-kv-key placeholder="key" /><input data-kv-val placeholder="value" />' +
+      '<button data-kv-remove title="删除">×</button>';
+    return d;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-k]"), function (el) {
+    var handler = function () { S[el.getAttribute("data-k")] = el.value; render(); };
+    el.addEventListener("input", handler);
+    el.addEventListener("change", handler);
+  });
+  document.querySelector('[data-clear="addr"]').addEventListener("click", function () {
+    S.addr = "";
+    document.getElementById("addr").value = "";
+    render();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-deploy]"), function (b) {
+    b.addEventListener("click", function () {
+      S.online = b.getAttribute("data-deploy") === "online";
+      render();
+    });
+  });
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest ? e.target.closest("[data-toggle]") : null;
+    if (t) {
+      var k = t.getAttribute("data-toggle");
+      S.opt[k] = !S.opt[k];
+      render();
+      return;
+    }
+    var add = e.target.closest ? e.target.closest("[data-kv-add]") : null;
+    if (add) {
+      document.getElementById("kvList").appendChild(kvRow());
+      var rows = document.querySelectorAll("#kvList .kv");
+      rows[rows.length - 1].querySelector("input").focus();
+      return;
+    }
+    var rem = e.target.closest ? e.target.closest("[data-kv-remove]") : null;
+    if (rem) {
+      var row = rem.closest(".kv");
+      var all = document.querySelectorAll("#kvList .kv");
+      if (all.length > 1) row.parentNode.removeChild(row);
+      else row.querySelectorAll("input").forEach(function (i) { i.value = ""; });
+      render();
+    }
+  });
+  adv.addEventListener("input", function (e) {
+    if (e.target.matches("[data-kv-key],[data-kv-val]")) render();
+  });
+  adv.addEventListener("change", function (e) {
+    var id = e.target.id;
+    if (id === "netPlugin") { S.opt.networkPlugin = e.target.value; render(); }
+    if (id === "ident") { S.ident = e.target.value; render(); }
+    if (id === "res") { S.res = e.target.value; render(); }
+    if (id === "batch") { S.batch = e.target.value; S.opt.batch = e.target.value; render(); }
+    if (id === "ksmInterval") { S.ksmInterval = e.target.value; render(); }
+  });
+
+  var modeBtns = document.querySelectorAll("[data-mode]");
+  Array.prototype.forEach.call(modeBtns, function (b) {
+    b.addEventListener("click", function () {
+      var k = b.getAttribute("data-mode");
+      var other = k === "ds" ? "sts" : "ds";
+      if (S[k] && !S[other]) return;
+      S[k] = !S[k];
+      b.classList.toggle("on", S[k]);
+      b.setAttribute("aria-pressed", S[k] ? "true" : "false");
+      render();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-step]"), function (st) {
+    st.addEventListener("click", function () {
+      S.step = Number(st.getAttribute("data-step"));
+      Array.prototype.forEach.call(document.querySelectorAll("[data-step]"), function (x) {
+        x.classList.toggle("on", Number(x.getAttribute("data-step")) === S.step);
+      });
+      render();
+    });
+  });
+  prevBtn.addEventListener("click", function () {
+    S.step = 1;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-step]"), function (x) {
+      x.classList.toggle("on", x.getAttribute("data-step") === "1");
+    });
+    render();
+  });
+  nextBtn.addEventListener("click", function () {
+    if (S.step < 3) {
+      var nstep = S.step + 1;
+      S.step = nstep;
+      Array.prototype.forEach.call(document.querySelectorAll("[data-step]"), function (x) {
+        x.classList.toggle("on", Number(x.getAttribute("data-step")) === nstep);
+      });
+      render();
+    }
+  });
+  preview.addEventListener("click", function (e) {
+    var dl = e.target.closest && e.target.closest("[data-download]");
+    if (dl) {
+      var pre = dl.closest(".code").querySelector("pre");
+      var blob = new Blob([pre.innerText], { type: "text/yaml;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = dl.getAttribute("data-download");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      return;
+    }
+    var sync = e.target.closest && e.target.closest("[data-sync]");
+    if (sync) {
+      S.syncTool = sync.getAttribute("data-sync");
+      render();
+      return;
+    }
+    var btn = e.target.closest && e.target.closest("[data-copy]");
+    if (!btn) return;
+    var pre = btn.closest(".code").querySelector("pre");
+    var text = pre.innerText;
+    var done = function () {
+      var old = btn.textContent;
+      btn.textContent = "已复制";
+      setTimeout(function () { btn.textContent = old; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, done);
+    else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (err) {}
+      document.body.removeChild(ta); done();
+    }
+  });
+
+  try {
+    var q = new URLSearchParams(location.search);
+    var dep = q.get("deploy");
+    if (dep === "offline") S.online = false;
+    if (dep === "online") S.online = true;
+    var m = q.get("mode");
+    if (m === "ds") { S.ds = true; S.sts = false; }
+    if (m === "sts") { S.ds = false; S.sts = true; }
+    if (m === "both") { S.ds = true; S.sts = true; }
+    if (q.get("step") === "2") S.step = 2;
+    Array.prototype.forEach.call(modeBtns, function (b) {
+      var k = b.getAttribute("data-mode");
+      b.classList.toggle("on", S[k]);
+      b.setAttribute("aria-pressed", S[k] ? "true" : "false");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-step]"), function (x) {
+      x.classList.toggle("on", Number(x.getAttribute("data-step")) === S.step);
+    });
+  } catch (err) {}
+
+  render();
+})();
+</script>
+</body>
+</html>

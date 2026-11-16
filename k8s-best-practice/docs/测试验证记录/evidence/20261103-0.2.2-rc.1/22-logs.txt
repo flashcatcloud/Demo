@@ -1,0 +1,33 @@
+# CMD: G3 日志健康检查：最近 300 行，grep error/fail/refused/401/tail command
+# AT: 2026-11-03T07:34:22Z / 2026-11-03T15:34:22+0800
+
+### component=categraf
+```
+pod=pod/categraf-drmkf
+--- 命中行（error|fail|refused|401|tail command）---
+2026/11/03 15:33:25 diskstats_linux.go:262: E! failed to open directory, disabling udev device properties path /run/udev/data
+2026/11/03 15:33:25 syslog_linux.go:207: E! failed to collect from log file%!(EXTRA string=err, *fmt.wrapError=failed to execute tail command: exit status 1)
+2026/11/03 15:33:25 collector.go:194: E! collector failed name syslog duration_seconds 0.00186287 err failed to execute tail command: exit status 1
+2026/11/03 15:33:40 syslog_linux.go:207: E! failed to collect from log file%!(EXTRA string=err, *fmt.wrapError=failed to execute tail command: exit status 1)
+2026/11/03 15:33:40 collector.go:194: E! collector failed name syslog duration_seconds 0.001733558 err failed to execute tail command: exit status 1
+2026/11/03 15:33:55 syslog_linux.go:207: E! failed to collect from log file%!(EXTRA string=err, *fmt.wrapError=failed to execute tail command: exit status 1)
+2026/11/03 15:33:55 collector.go:194: E! collector failed name syslog duration_seconds 0.024752453 err failed to execute tail command: exit status 1
+2026/11/03 15:34:10 syslog_linux.go:207: E! failed to collect from log file%!(EXTRA string=err, *fmt.wrapError=failed to execute tail command: exit status 1)
+2026/11/03 15:34:10 collector.go:194: E! collector failed name syslog duration_seconds 0.022572319 err failed to execute tail command: exit status 1
+--- 行数:      155 ---
+```
+### component=categraf-ksm
+```
+pod=pod/categraf-ksm-0
+--- 命中行（error|fail|refused|401|tail command）---
+(无命中)
+--- 行数:       39 ---
+```
+### component=operator
+```
+pod=pod/categraf-operator-85d84d7d5b-cfrc5
+--- 命中行（error|fail|refused|401|tail command）---
+(无命中)
+--- 行数:       11 ---
+```
+syslog 报错命中数（当前容器最近 300 行）: 8 —— 记录为已知问题，不作为通过项

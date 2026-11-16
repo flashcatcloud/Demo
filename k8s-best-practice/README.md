@@ -15,11 +15,13 @@
 - **文档**：[`docs/01-k8s-base/K8S指标监控.md`](docs/01-k8s-base/K8S指标监控.md)
 - **一键部署组件**：
   - `Kube-State-Metrics`（Deployment）：采集 K8s 对象状态指标
-  - `KSM Agent`（StatefulSet）：从 KSM 拉取指标并写入 Flashcat；内置 `app-metrics` job，自动发现应用指标
+  - `KSM Agent`（StatefulSet）：从 KSM 拉取指标并写入 Flashcat；内置 annotation 应用发现任务，并支持通过原生 `extraScrapeConfigs` 扩展
   - `Node Agent`（DaemonSet）：每节点采集 cAdvisor / kubelet / 主机指标
   - `Operator`（Deployment，可选）：节点删除后自动清理 Flashcat 残留设备
 - **部署方式**：OCI 在线部署 / 离线部署 / values 文件部署
 - **Chart 仓库**：`oci://registry.flashcat.cloud/public/charts/categraf:0.2.x`
+  - 生产版本 `0.2.3`（`latest` 指向它，2026-11-16 发布）；上一版 `0.2.2` 保留可回退
+  - 版本号规则见 [`docs/附录/发布Chart到仓库.md`](docs/附录/发布Chart到仓库.md)
 
 ### 1.2 K8S 日志采集（节点和容器日志）
 
@@ -57,7 +59,7 @@
 | OTel 场景 | OTel JMX 扩展 | 无需 Categraf，直接上报 |
 
 - **采集配置**：Flashcat 控制台手动下发 或 自动发现（推荐）
-- **标签规范**：`env`、`cluster`、`namespace`、`service`、`job`、`team`
+- **标签规范**：抓取参数使用 `prometheus.io/scrape|port|path|scheme` annotation；身份与聚合使用 `env`、`cluster`、`namespace`、`service`、`job`、`team`
 - **示例配置**：[`assets/examples/`](assets/examples/)
 
 ### 3.2 应用 APM 接入
@@ -75,5 +77,8 @@
 | [`docs/附录/idaas.md`](docs/附录/idaas.md) | Flashcat 对接阿里云 IDaaS 单点登录配置 |
 | [`docs/附录/发布Chart到仓库.md`](docs/附录/发布Chart到仓库.md) | categraf chart 推送 OCI 仓库的固定地址与命令（`oci://registry.flashcat.cloud/public/charts`） |
 | [`publish-chart.sh`](publish-chart.sh) | 一键推送 categraf chart 到 OCI 仓库 |
+| [`docs/页面设计/K8S接入Categraf页面设计.md`](docs/页面设计/K8S接入Categraf页面设计.md) | 控制台「接入 Kubernetes」页面的内容设计（DaemonSet / StatefulSet 两套 8 节内容、变量注入矩阵、Helm `latest` 策略） |
+| [`docs/页面设计/K8s接入Categraf-页面demo.html`](docs/页面设计/K8s接入Categraf-页面demo.html) | 配置页 Demo：填参数 → 实时生成 values.yaml → 部署命令 + 接入校验（浏览器直接打开） |
+| [`docs/页面设计/K8s接入Categraf-前端交付说明.md`](docs/页面设计/K8s接入Categraf-前端交付说明.md) | 给前端的交付说明：参数契约、values/命令生成规则、交互与验收标准 |
 | [`assets/opentelemetry-java-instrumentation-main/`](assets/opentelemetry-java-instrumentation-main/) | OTel Java Instrumentation 参考源码 |
 | [`archive/`](archive/) | 合并前的原始文档存档 |
