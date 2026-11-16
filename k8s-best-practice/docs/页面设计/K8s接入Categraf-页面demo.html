@@ -507,12 +507,12 @@
 
           <div class="opt" data-opt="res">
             <div class="grow">
-              <div class="tt">资源规格<span class="tip" data-tip="决定各容器的 CPU / 内存请求与上限。小、中、大是成套预设，中档等于 Chart 默认值、不写进 values。选自定义可分别设置节点采集（DaemonSet）、集群采集（StatefulSet）与 kube-state-metrics（Deployment），只显示当前启用的那些。">?</span></div>
-              <div class="dd">按节点规格选，中为推荐</div>
+              <div class="tt">资源规格<span class="tip" data-tip="作用于三个采集容器：节点采集（DaemonSet）、集群采集（StatefulSet）、kube-state-metrics（Deployment）。小/中/大是成套的 requests + limits 预设，选项里的数字是 requests；中档等于 Chart 默认值、不写进 values。选自定义可分别设置这三个容器的 CPU/内存，未启用的不显示。">?</span></div>
+              <div class="dd">影响节点、集群、KSM 三个容器的 CPU/内存</div>
               <select id="res">
-                <option value="s">小 · 100m / 256Mi</option>
-                <option value="m" selected>中 · 200m / 512Mi</option>
-                <option value="l">大 · 500m / 1Gi</option>
+                <option value="s">小 · 请求 100m / 256Mi</option>
+                <option value="m" selected>中 · 请求 200m / 512Mi</option>
+                <option value="l">大 · 请求 500m / 1Gi</option>
                 <option value="custom">自定义</option>
               </select>
             </div>

@@ -97,7 +97,7 @@
 | ident | 设备标识 | 节点名 | 有 ds | `nodeCategraf.hostname` |
 | remoteWrite | 写入认证 | user001 / 空 | 有 sts | `categraf.remoteWriteUser/Password` |
 | imgVer / ksmVer / opVer | 镜像版本 | 0.5.45 / 2.19.1 / 0.0.7 | 对应组件启用时 | `*.image` |
-| res | 资源规格 | 中 | 全部 | 见 4.3 |
+| res | 资源规格 | 中 | 全部 | 见 4.3；作用对象是三个容器，选项里的数字只代表 requests |
 | batch | 写入批量 | 默认 | 全部 | `categraf.writer.batch` |
 | split | 指标抓取间隔 | 关 | 有 sts | `categraf.prometheus.scrapeInterval` |
 | compliant | 非特权模式 | 关 | 有 ds | `securityContext.privileged: false` + `hostExec.enabled: false` |
