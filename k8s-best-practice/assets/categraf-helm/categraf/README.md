@@ -79,9 +79,9 @@ categraf:
 
 这些参数会同时应用到 Node Agent 和 KSM Agent；`writer.batch` 未配置时保留各组件默认值。server、providers、hostname、心跳 URL 等关键结构仍由 Chart 管理。
 
-### 集群侧抓取周期
+### 指标抓取间隔
 
-`categraf.prometheus.scrapeInterval` 控制 KSM Agent 的内置抓取周期（`kube-state-metrics`、`app-metrics`、组件指标共用），单位秒，默认 `15`：
+`categraf.prometheus.scrapeInterval` 控制 KSM Agent 的指标抓取周期（`kube-state-metrics`、`app-metrics`、组件指标共用），单位秒，默认 `15`：
 
 ```yaml
 categraf:

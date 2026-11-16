@@ -35,7 +35,7 @@ cp categraf/values-examples/values.yaml my-values.yaml
 - `categraf.clusterName`：集群名，必须全局唯一，每个 Kubernetes 集群使用不同值
 - `operator.userToken`：Flashcat API Token；不需要节点清理时可将 `operator.enabled` 设为 false
 
-常用可选项：`categraf.heartbeatGid`（业务组 GID）、`categraf.env`（环境标签）、`categraf.customLabels`（附加到所有上报指标的自定义标签）、`categraf.prometheus.scrapeInterval`（集群侧抓取周期，默认 15 秒）、`controlPlane.enabled`（采集控制平面指标，默认 false，见附录 A）。
+常用可选项：`categraf.heartbeatGid`（业务组 GID）、`categraf.env`（环境标签）、`categraf.customLabels`（附加到所有上报指标的自定义标签）、`categraf.prometheus.scrapeInterval`（指标抓取间隔，默认 15 秒）、`controlPlane.enabled`（采集控制平面指标，默认 false，见附录 A）。
 
 最小配置示例：
 

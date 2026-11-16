@@ -507,7 +507,7 @@
 
           <div class="opt" data-opt="res">
             <div class="grow">
-              <div class="tt">资源规格<span class="tip" data-tip="决定各容器的 CPU / 内存请求与上限。小、中、大是成套预设；中档沿用 Chart 默认，只把 KSM Agent 的内存上限提到 2Gi。选自定义可分别设置节点采集（DaemonSet）、集群采集（StatefulSet）与 kube-state-metrics（Deployment），只显示当前启用的那些。">?</span></div>
+              <div class="tt">资源规格<span class="tip" data-tip="决定各容器的 CPU / 内存请求与上限。小、中、大是成套预设，中档等于 Chart 默认值、不写进 values。选自定义可分别设置节点采集（DaemonSet）、集群采集（StatefulSet）与 kube-state-metrics（Deployment），只显示当前启用的那些。">?</span></div>
               <div class="dd">按节点规格选，中为推荐</div>
               <select id="res">
                 <option value="s">小 · 100m / 256Mi</option>
@@ -550,8 +550,8 @@
 
           <div class="opt" data-opt="split">
             <div class="grow">
-              <div class="tt">集群侧抓取间隔<span class="tip" data-tip="主机采集间隔在左栏统一设置；这里单独设置集群侧（KSM、应用、组件）的抓取周期，与左侧的主机采集间隔互不影响。">?</span></div>
-              <div class="dd">KSM 与应用指标的周期</div>
+              <div class="tt">指标抓取间隔<span class="tip" data-tip="KSM、应用指标、K8s 组件的采集周期。与左栏「采集间隔」是两件事：那个是插件采集周期，这个是 Prometheus 抓取周期。">?</span></div>
+              <div class="dd">KSM 与应用指标的抓取周期</div>
             </div>
             <button class="sw" data-toggle="split" aria-pressed="false"></button>
           </div>
@@ -792,10 +792,6 @@
         out.push.apply(out, resLines("  ", RES[S.res].ksm));
       } else if (S.res === "custom") {
         out.push.apply(out, resLines("  ", { req: [S.ksmReqCpu, S.ksmReqMem], lim: [S.ksmLimCpu, S.ksmLimMem] }));
-      } else {
-        out.push("  resources:               # 只改内存上限（Chart 默认 1.5Gi 提到 2Gi）；cpu 与 requests 仍用 Chart 默认");
-        out.push("    limits:");
-        out.push("      memory: 2Gi");
       }
     }
     var ksmOn = S.sts && S.opt.ksm;

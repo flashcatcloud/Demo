@@ -1174,13 +1174,13 @@ kubectl -n flashcat get deploy categraf-kube-state-metrics categraf-operator
 | A | 自定义采集任务 | 可选配置（YAML 文本域） | `appMetrics.extraScrapeConfigs` |
 | A | 上报标识 | 可选配置（下拉） | `nodeCategraf.hostname` |
 | A | 远程写认证 | 可选配置（账号+密码） | `categraf.remoteWriteUser/Password` |
-| B | 资源规格 | 可选配置（小 / 中·推荐 / 大 / 自定义） | 小·大：三个工作负载；中：仅覆盖 `ksmCategraf.resources.limits.memory: 2Gi`；自定义：按启用模式分三组 |
+| B | 资源规格 | 可选配置（小 / 中·推荐 / 大 / 自定义） | 小·大：三个工作负载；中：不写（用 Chart 默认）；自定义：按启用模式分三组 |
 
 > `1.5Gi` 是 Chart 0.2.2 的默认内存上限，语法合法（等于 1536Mi），但和其他二进制整数值（512Mi / 1Gi / 2Gi）风格不一致，且 KSM Agent 在对象多的集群里确实吃内存，故页面统一提到 2Gi。中档用**部分覆盖**而非整块重写，Helm 会递归合并，cpu 与 requests 仍取 Chart 默认——已用 `helm template` 验证渲染结果为 `cpu: 1000m / memory: 2Gi`。
 | B | 写入批量 | 可选配置 | `categraf.writer.batch` |
 | B | 控制平面采集 | 可选配置 | `controlPlane.enabled` |
 | D | 合规模式（非特权） | 可选配置 | `securityContext.privileged: false` **+** `hostExec.enabled: false` |
-| D | 集群侧抓取间隔 | 可选配置 | `categraf.prometheus.scrapeInterval`（待 Chart 支持） |
+| D | 指标抓取间隔 | 可选配置 | `categraf.prometheus.scrapeInterval`（0.2.3 起支持） |
 
 两个实现上的坑，已写进交付说明：
 

@@ -164,7 +164,7 @@ operator:
 | 业务组 | `categraf.heartbeatGid` | 空 | 设备心跳自动归入该业务组 |
 | 自定义标签 | `categraf.customLabels` | 空 | 附加到所有上报指标；`env`/`cluster`/`categraf` 为保留键 |
 | 采集间隔 | `categraf.config.interval` | 15 | 各 input 插件的采集周期 |
-| 集群侧抓取周期 | `categraf.prometheus.scrapeInterval` | 15 | **0.2.3 新增**：KSM/应用/组件指标的抓取周期 |
+| 指标抓取间隔 | `categraf.prometheus.scrapeInterval` | 15 | **0.2.3 新增**：KSM/应用/组件指标的抓取周期 |
 | 写入批量 | `categraf.writer.batch` | 2000/1000 | 大集群写入积压时调大 |
 | 设备标识 | `nodeCategraf.hostname` | `nodeName` | 服务拓扑要求用节点名；多集群可改 `${cluster}-${nodeName}` |
 
@@ -359,6 +359,6 @@ helm uninstall categraf -n flashcat --no-hooks
 
 | 项 | 变更 |
 |---|---|
-| 新增参数 | `categraf.prometheus.scrapeInterval`（默认 15），集群侧抓取周期可配 |
+| 新增参数 | `categraf.prometheus.scrapeInterval`（默认 15），指标抓取间隔可配 |
 | 默认值调整 | `ksmCategraf.resources.limits.memory` 1.5Gi → 2Gi |
 | 发布信息 | digest `sha256:3f1166ea…`，`latest` 已指向 0.2.3 |

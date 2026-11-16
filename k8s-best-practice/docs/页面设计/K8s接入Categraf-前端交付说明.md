@@ -99,7 +99,7 @@
 | imgVer / ksmVer / opVer | 镜像版本 | 0.5.45 / 2.19.1 / 0.0.7 | 对应组件启用时 | `*.image` |
 | res | 资源规格 | 中 | 全部 | 见 4.3 |
 | batch | 写入批量 | 默认 | 全部 | `categraf.writer.batch` |
-| split | 集群侧抓取间隔 | 关 | 有 sts | `categraf.prometheus.scrapeInterval` |
+| split | 指标抓取间隔 | 关 | 有 sts | `categraf.prometheus.scrapeInterval` |
 | compliant | 非特权模式 | 关 | 有 ds | `securityContext.privileged: false` + `hostExec.enabled: false` |
 
 ---
@@ -136,7 +136,7 @@ kubeProxy: enabled（有 ds 时写）
 | 大 | 500m/1Gi → 3000m/4Gi | 1000m/2Gi → 2000m/3Gi | 500m/1Gi → 1000m/2Gi |
 | 自定义 | 三组输入框，按启用模式显示 | | |
 
-> 中档唯一例外：写 `ksmCategraf.resources.limits.memory: 2Gi`（Chart 默认 1.5Gi，页面统一提到 2Gi，用部分覆盖而非整块重写）。
+> 中档不写任何 `resources`，全部沿用 Chart 默认值（0.2.3 起 KSM Agent 默认上限已是 2Gi）。
 
 ### 4.4 命令生成
 
