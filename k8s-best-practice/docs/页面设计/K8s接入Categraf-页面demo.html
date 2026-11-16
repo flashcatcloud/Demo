@@ -793,7 +793,7 @@
       } else if (S.res === "custom") {
         out.push.apply(out, resLines("  ", { req: [S.ksmReqCpu, S.ksmReqMem], lim: [S.ksmLimCpu, S.ksmLimMem] }));
       } else {
-        out.push("  resources:               # 仅覆盖 Chart 默认的 1.5Gi，其余沿用默认");
+        out.push("  resources:               # 只改内存上限（Chart 默认 1.5Gi 提到 2Gi）；cpu 与 requests 仍用 Chart 默认");
         out.push("    limits:");
         out.push("      memory: 2Gi");
       }
