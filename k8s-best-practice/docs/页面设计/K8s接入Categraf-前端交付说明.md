@@ -97,7 +97,7 @@
 | ident | 设备标识 | 节点名 | 有 ds | `nodeCategraf.hostname` |
 | remoteWrite | 写入认证 | user001 / 空 | 有 sts | `categraf.remoteWriteUser/Password` |
 | imgVer / ksmVer / opVer | 镜像版本 | 0.5.45 / 2.19.1 / 0.0.7 | 对应组件启用时 | `*.image` |
-| res | 资源规格 | 中 | 全部 | 见 4.3；作用对象是三个容器，选项里的数字只代表 requests |
+| req*/lim*/ksm*/ks* | 资源规格三组输入 | 见 4.3 | 对应容器启用时 | `nodeCategraf.resources` / `ksmCategraf.resources` / `kubeStateMetrics.resources` |
 | batch | 写入批量 | 默认 | 全部 | `categraf.writer.batch` |
 | split | 指标抓取间隔 | 关 | 有 sts | `categraf.prometheus.scrapeInterval` |
 | compliant | 非特权模式 | 关 | 有 ds | `securityContext.privileged: false` + `hostExec.enabled: false` |
@@ -129,14 +129,17 @@ kubeProxy: enabled（有 ds 时写）
 
 ### 4.3 资源规格
 
-| 档位 | 节点 | 集群 | KSM |
-|---|---|---|---|
-| 小 | 100m/256Mi → 500m/1Gi | 200m/256Mi → 500m/1Gi | 100m/128Mi → 500m/1Gi |
-| 中 | 不写，用 Chart 默认 | 不写 | 不写 |
-| 大 | 500m/1Gi → 3000m/4Gi | 1000m/2Gi → 2000m/3Gi | 500m/1Gi → 1000m/2Gi |
-| 自定义 | 三组输入框，按启用模式显示 | | |
+三组输入**常显**（不再有下拉档位），每组两行：请求 / 上限，各填 cpu 与 memory。启用哪个容器就显示哪组、写哪组。
 
-> 中档不写任何 `resources`，全部沿用 Chart 默认值（0.2.3 起 KSM Agent 默认上限已是 2Gi）。
+| 分组 | 默认值（Chart 默认） | 写入位置 |
+|---|---|---|
+| 节点采集 · DaemonSet | 请求 200m / 512Mi，上限 2000m / 2Gi | `nodeCategraf.resources` |
+| 集群采集 · StatefulSet | 请求 500m / 512Mi，上限 1000m / 2Gi | `ksmCategraf.resources` |
+| kube-state-metrics · Deployment | 请求 200m / 256Mi，上限 500m / 1Gi | `kubeStateMetrics.resources` |
+
+- 显示条件：节点组看是否启用 DaemonSet；集群组看是否启用 StatefulSet；KSM 组额外要求「安装 kube-state-metrics」开启
+- 写入策略：**所见即所得**，页面上显示的四个值原样写进 values（即使等于 Chart 默认）
+- 任一组有字段为空 → 主按钮禁用
 
 ### 4.4 命令生成
 

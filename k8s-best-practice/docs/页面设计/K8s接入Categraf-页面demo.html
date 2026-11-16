@@ -505,35 +505,26 @@
 
           <div class="adv-h">资源与调度</div>
 
-          <div class="opt" data-opt="res">
+          <div class="opt" data-opt="res" style="border-bottom:0;padding-bottom:2px">
             <div class="grow">
-              <div class="tt">资源规格<span class="tip" data-tip="作用于三个采集容器：节点采集（DaemonSet）、集群采集（StatefulSet）、kube-state-metrics（Deployment）。小/中/大是成套的 requests + limits 预设，选项里的数字是 requests；中档等于 Chart 默认值、不写进 values。选自定义可分别设置这三个容器的 CPU/内存，未启用的不显示。">?</span></div>
-              <div class="dd">影响节点、集群、KSM 三个容器的 CPU/内存</div>
-              <select id="res">
-                <option value="s">小 · 请求 100m / 256Mi</option>
-                <option value="m" selected>中 · 请求 200m / 512Mi</option>
-                <option value="l">大 · 请求 500m / 1Gi</option>
-                <option value="custom">自定义</option>
-              </select>
+              <div class="tt">资源规格</div>
+              <div class="dd">按容器填写 CPU / 内存，会写入 values.yaml</div>
             </div>
           </div>
-          <div id="resCustom" hidden>
-            <div id="resCustomNode">
-              <div class="kw">节点采集 · DaemonSet</div>
-              <div class="kv"><span class="kvl">请求</span><input data-k="reqCpu" value="200m" placeholder="cpu" /><input data-k="reqMem" value="512Mi" placeholder="memory" /></div>
-              <div class="kv"><span class="kvl">上限</span><input data-k="limCpu" value="2000m" placeholder="cpu" /><input data-k="limMem" value="2Gi" placeholder="memory" /></div>
-            </div>
-            <div id="resCustomKsm">
-              <div class="kw">集群采集 · StatefulSet</div>
-              <div class="kv"><span class="kvl">请求</span><input data-k="ksmReqCpu" value="500m" placeholder="cpu" /><input data-k="ksmReqMem" value="512Mi" placeholder="memory" /></div>
-              <div class="kv"><span class="kvl">上限</span><input data-k="ksmLimCpu" value="1000m" placeholder="cpu" /><input data-k="ksmLimMem" value="2Gi" placeholder="memory" /></div>
-            </div>
-            <div id="resCustomKs" hidden>
-              <div class="kw">kube-state-metrics · Deployment</div>
-              <div class="kv"><span class="kvl">请求</span><input data-k="ksReqCpu" value="200m" placeholder="cpu" /><input data-k="ksReqMem" value="256Mi" placeholder="memory" /></div>
-              <div class="kv"><span class="kvl">上限</span><input data-k="ksLimCpu" value="500m" placeholder="cpu" /><input data-k="ksLimMem" value="1Gi" placeholder="memory" /></div>
-            </div>
-            <div class="hint" style="margin:6px 0 8px">按当前启用的采集模式显示对应分组；中档等于 Chart 默认值</div>
+          <div id="resCustomNode">
+            <div class="kw">节点采集 · DaemonSet</div>
+            <div class="kv"><span class="kvl">请求</span><input data-k="reqCpu" value="200m" placeholder="cpu" /><input data-k="reqMem" value="512Mi" placeholder="memory" /></div>
+            <div class="kv"><span class="kvl">上限</span><input data-k="limCpu" value="2000m" placeholder="cpu" /><input data-k="limMem" value="2Gi" placeholder="memory" /></div>
+          </div>
+          <div id="resCustomKsm">
+            <div class="kw">集群采集 · StatefulSet</div>
+            <div class="kv"><span class="kvl">请求</span><input data-k="ksmReqCpu" value="500m" placeholder="cpu" /><input data-k="ksmReqMem" value="512Mi" placeholder="memory" /></div>
+            <div class="kv"><span class="kvl">上限</span><input data-k="ksmLimCpu" value="1000m" placeholder="cpu" /><input data-k="ksmLimMem" value="2Gi" placeholder="memory" /></div>
+          </div>
+          <div id="resCustomKs">
+            <div class="kw">kube-state-metrics · Deployment</div>
+            <div class="kv"><span class="kvl">请求</span><input data-k="ksReqCpu" value="200m" placeholder="cpu" /><input data-k="ksReqMem" value="256Mi" placeholder="memory" /></div>
+            <div class="kv"><span class="kvl">上限</span><input data-k="ksLimCpu" value="500m" placeholder="cpu" /><input data-k="ksLimMem" value="1Gi" placeholder="memory" /></div>
           </div>
 
           <div class="opt" data-opt="batch">
@@ -598,18 +589,6 @@
     coreDns: true, networkPlugin: "none", controlPlane: false, extraJobs: false,
     split: false, compliant: false
   };
-  var RES = {
-    s: {
-      node: { req: ["100m", "256Mi"], lim: ["500m", "1Gi"] },
-      ksm: { req: ["200m", "256Mi"], lim: ["500m", "1Gi"] },
-      ks: { req: ["100m", "128Mi"], lim: ["500m", "1Gi"] }
-    },
-    l: {
-      node: { req: ["500m", "1Gi"], lim: ["3000m", "4Gi"] },
-      ksm: { req: ["1000m", "2Gi"], lim: ["2000m", "3Gi"] },
-      ks: { req: ["500m", "1Gi"], lim: ["1000m", "2Gi"] }
-    }
-  };
   var S = {
     online: true,
     syncTool: "docker",
@@ -625,7 +604,6 @@
     ident: "nodeName",
     rwUser: "user001",
     rwPass: "",
-    res: "m",
     reqCpu: "200m", reqMem: "512Mi", limCpu: "2000m", limMem: "2Gi",
     imgVer: "0.5.45", ksmVer: "2.19.1", opVer: "0.0.7",
     ksmReqCpu: "500m", ksmReqMem: "512Mi", ksmLimCpu: "1000m", ksmLimMem: "2Gi",
@@ -775,11 +753,7 @@
       out.push("    cadvisor: " + S.opt.cadvisor);
       out.push("    hostNative:");
       out.push("      enabled: " + S.opt.hostNative);
-      if (S.res === "custom") {
-        out.push.apply(out, resLines("  ", { req: [S.reqCpu, S.reqMem], lim: [S.limCpu, S.limMem] }));
-      } else if (RES[S.res]) {
-        out.push.apply(out, resLines("  ", RES[S.res].node));
-      }
+      out.push.apply(out, resLines("  ", { req: [S.reqCpu, S.reqMem], lim: [S.limCpu, S.limMem] }));
     }
     out.push("");
 
@@ -788,22 +762,14 @@
     if (S.sts) {
       out.push("  replicas: 1");
       if (needImg("ksm")) out.push('  image: "' + img.ksm + '"');
-      if (S.res === "s" || S.res === "l") {
-        out.push.apply(out, resLines("  ", RES[S.res].ksm));
-      } else if (S.res === "custom") {
-        out.push.apply(out, resLines("  ", { req: [S.ksmReqCpu, S.ksmReqMem], lim: [S.ksmLimCpu, S.ksmLimMem] }));
-      }
+      out.push.apply(out, resLines("  ", { req: [S.ksmReqCpu, S.ksmReqMem], lim: [S.ksmLimCpu, S.ksmLimMem] }));
     }
     var ksmOn = S.sts && S.opt.ksm;
     out.push("kubeStateMetrics:");
     out.push("  enabled: " + ksmOn);
     if (ksmOn && needImg("ks")) out.push('  image: "' + img.ks + '"');
     if (ksmOn) {
-      if (S.res === "custom") {
-        out.push.apply(out, resLines("  ", { req: [S.ksReqCpu, S.ksReqMem], lim: [S.ksLimCpu, S.ksLimMem] }));
-      } else if (RES[S.res]) {
-        out.push.apply(out, resLines("  ", RES[S.res].ks));
-      }
+      out.push.apply(out, resLines("  ", { req: [S.ksReqCpu, S.ksReqMem], lim: [S.ksLimCpu, S.ksLimMem] }));
     }
 
     var jobs = normalizeJobs(S.extraJobs || "");
@@ -1041,7 +1007,6 @@
       var el = document.getElementById(id);
       if (el) el.hidden = true;
     });
-    var rc = document.getElementById("resCustom"); if (rc) rc.hidden = S.res !== "custom";
     var rn = document.getElementById("resCustomNode"); if (rn) rn.hidden = !S.ds;
     var rk = document.getElementById("resCustomKsm"); if (rk) rk.hidden = !S.sts;
     var rks = document.getElementById("resCustomKs"); if (rks) rks.hidden = !(S.sts && S.opt.ksm);
@@ -1076,7 +1041,6 @@
       if (S.rwPass.trim()) n++;
       if (S.gid.trim()) n++;
       if (S.ident !== "nodeName") n++;
-      if (S.res !== "m") n++;
       if (S.batch) n++;
       if ((S.extraJobs || "").trim()) n++;
       badge.textContent = n ? ("已改 " + n + " 项") : "默认";
@@ -1164,10 +1128,9 @@
       (S.envMode !== "custom" || S.envCustom.trim()) &&
       (!(S.sts && S.opt.ksm) || S.ksmVer.trim()) &&
       (!S.opt.operator || S.opVer.trim()) &&
-      (S.res !== "custom" ||
-        (!S.ds || (S.reqCpu.trim() && S.reqMem.trim() && S.limCpu.trim() && S.limMem.trim())) &&
-        (!S.sts || (S.ksmReqCpu.trim() && S.ksmReqMem.trim() && S.ksmLimCpu.trim() && S.ksmLimMem.trim())) &&
-        (!(S.sts && S.opt.ksm) || (S.ksReqCpu.trim() && S.ksReqMem.trim() && S.ksLimCpu.trim() && S.ksLimMem.trim())));
+      (!S.ds || (S.reqCpu.trim() && S.reqMem.trim() && S.limCpu.trim() && S.limMem.trim())) &&
+      (!S.sts || (S.ksmReqCpu.trim() && S.ksmReqMem.trim() && S.ksmLimCpu.trim() && S.ksmLimMem.trim())) &&
+      (!(S.sts && S.opt.ksm) || (S.ksReqCpu.trim() && S.ksReqMem.trim() && S.ksLimCpu.trim() && S.ksLimMem.trim()));
     nextBtn.disabled = !ok;
   }
 
